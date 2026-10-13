@@ -247,8 +247,8 @@
   <section class="card" aria-labelledby="h-size">
     <h2 id="h-size">2. ขนาดสติกเกอร์</h2>
     <fieldset>
-      <legend>ขนาดสติกเกอร์ (ไฟล์ Word)</legend>
-      <div class="chips" role="radiogroup" aria-label="ขนาดสติกเกอร์ (ไฟล์ Word)">
+      <legend>ขนาดดวงสติกเกอร์</legend>
+      <div class="chips" role="radiogroup" aria-label="ขนาดดวงสติกเกอร์">
         <label class="chip"><input type="radio" name="sticker" value="45x25" checked><span>45 × 25 มม.</span></label>
         <label class="chip"><input type="radio" name="sticker" value="45x12"><span>45 × 12 มม.</span></label>
         <label class="chip"><input type="radio" name="sticker" value="custom"><span>กำหนดเอง</span></label>
@@ -263,6 +263,14 @@
         <label for="sticker-gap">ช่องไฟระหว่างดวง (มม.)</label>
         <input type="number" id="sticker-gap" min="0" max="10" step="0.5" value="3" inputmode="decimal">
       </div>
+      <fieldset class="digit-size">
+        <legend>ขนาดตัวเลข</legend>
+        <div class="chips" role="radiogroup" aria-label="ขนาดตัวเลข">
+          <label class="chip"><input type="radio" name="digit-size" value="normal" checked><span>ปกติ</span></label>
+          <label class="chip"><input type="radio" name="digit-size" value="large"><span>ใหญ่</span></label>
+          <label class="chip"><input type="radio" name="digit-size" value="xlarge"><span>ใหญ่มาก</span></label>
+        </div>
+      </fieldset>
       <div class="field-inline">
         <p id="sticker-preview" class="muted" role="status" aria-live="polite"></p>
         <p class="muted hint">ก่อนพิมพ์จริง ลองพิมพ์ลงกระดาษธรรมดา 1 แผ่นแล้วทาบกับบัตรซิม · ตอนสั่งพิมพ์ให้เลือกกระดาษ A4 และขนาด 100% หรือ "ขนาดจริง" (ไม่ย่อให้พอดีหน้า) · ไฟล์ PDF พิมพ์ได้ขนาดตรงกว่า โดยเฉพาะจากมือถือ</p>
@@ -382,6 +390,40 @@ function stickerFontHalfPoints(labelW, labelH) {
   return Math.round(stickerFontPt(labelW, labelH) * 2);
 }
 
+// Digit size options: a factor on the base point size. Bigger digits are taller (up to the height cap)
+// and condensed horizontally (Word w:w, PDF Tz) so 10 digits still fit the label width.
+const STICKER_DIGIT_FACTORS = { normal: 1, large: 1.3, xlarge: 1.6 };
+const STICKER_DIGIT_MAX_PT = 48;
+
+function floorHalfPt(pt) {
+  return Math.floor(pt * 2) / 2;
+}
+
+// { pt, scale } for a label and digit size key ('normal' | 'large' | 'xlarge'; anything else is 'normal').
+// pt is the font size in points (multiple of 0.5). scale is the horizontal scale in whole percent, 50..100.
+// Height: em * 1.2 must fit in labelH - 2 mm. Width: 10 digits at 0.556 em, 3.5 mm per side.
+function stickerTextStyle(labelW, labelH, sizeKey) {
+  const key = Object.prototype.hasOwnProperty.call(STICKER_DIGIT_FACTORS, sizeKey) ? sizeKey : 'normal';
+  const base = stickerFontPt(labelW, labelH);
+  const heightCapPt = ((labelH - 2) / 1.2) / 0.3528;
+  const grown = floorHalfPt(Math.min(base * STICKER_DIGIT_FACTORS[key], heightCapPt, STICKER_DIGIT_MAX_PT));
+  const pt = Math.max(base, grown);
+  const widthFitPt = ((labelW - 7) / 5.56) / 0.3528;
+  let scale = Math.min(100, Math.floor(100 * widthFitPt / pt));
+  let outPt = pt;
+  // Too wide even at 50%: keep the condensing at 50% and make the font smaller instead.
+  if (scale < 50) {
+    outPt = floorHalfPt(widthFitPt / 0.5);
+    scale = 50;
+  }
+  return { pt: outPt, scale };
+}
+
+// Cap height of the digits in millimetres (0.718 em), rounded to 0.1 mm.
+function stickerDigitHeightMm(pt) {
+  return Math.round(0.718 * pt * 25.4 / 72 * 10) / 10;
+}
+
 // Empty paragraph that stays tiny, so a gap cell never grows its row.
 const STICKER_TINY_PARA = '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/>' +
   '<w:rPr><w:sz w:val="2"/></w:rPr></w:pPr></w:p>';
@@ -391,7 +433,8 @@ const STICKER_PAGE_BREAK_PARA = '<w:p><w:pPr><w:spacing w:before="0" w:after="0"
 
 // Word document.xml: one table per A4 page. Label cells have dashed cut lines; the gaps between them
 // are empty columns and rows with no borders. Throws when the size or gap is not usable.
-function buildStickerDocumentXml(values, labelW, labelH, gapMm) {
+// sizeKey picks the digit size (see stickerTextStyle); w:w condenses the digits when scale is under 100.
+function buildStickerDocumentXml(values, labelW, labelH, gapMm, sizeKey) {
   const layout = computeStickerLayout(labelW, labelH, gapMm);
   if (!layout) throw new Error('invalid sticker size');
   const head = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
@@ -408,7 +451,10 @@ function buildStickerDocumentXml(values, labelW, labelH, gapMm) {
   const cellW = stickerCellTwips(labelW);
   const cellH = stickerCellTwips(labelH);
   const gapT = stickerCellTwips(gap);
-  const hp = stickerFontHalfPoints(labelW, labelH);
+  const style = stickerTextStyle(labelW, labelH, sizeKey);
+  const hp = Math.round(style.pt * 2);
+  // Schema order in rPr: w:w goes after bCs and before sz.
+  const condense = style.scale < 100 ? '<w:w w:val="' + style.scale + '"/>' : '';
 
   // Grid columns from left to right: label, gap, label, ... (gap columns only when there is a gap).
   const columns = [];
@@ -423,7 +469,7 @@ function buildStickerDocumentXml(values, labelW, labelH, gapMm) {
   const labelCellXml = (value) => {
     const run = value == null ? '' :
       '<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:b/><w:bCs/>' +
-      '<w:sz w:val="' + hp + '"/><w:szCs w:val="' + hp + '"/></w:rPr>' +
+      condense + '<w:sz w:val="' + hp + '"/><w:szCs w:val="' + hp + '"/></w:rPr>' +
       '<w:t xml:space="preserve">' + escapeXml(value) + '</w:t></w:r>';
     return '<w:tc><w:tcPr><w:tcW w:w="' + cellW + '" w:type="dxa"/>' + cutBorders +
       '<w:vAlign w:val="center"/></w:tcPr><w:p>' + cellPPr + run + '</w:p></w:tc>';
@@ -485,7 +531,8 @@ function escapePdfString(value) {
 
 // PDF 1.4 source for the sticker sheets. Throws when the size or gap is not usable.
 // Empty values give a valid one-page blank PDF. Labels without a value get no outline.
-function buildStickerPdf(values, labelW, labelH, gapMm) {
+// sizeKey picks the digit size; Tz condenses the digits horizontally (100 for normal).
+function buildStickerPdf(values, labelW, labelH, gapMm, sizeKey) {
   const layout = computeStickerLayout(labelW, labelH, gapMm);
   if (!layout) throw new Error('invalid sticker size');
   const f = (n) => n.toFixed(2);
@@ -493,7 +540,8 @@ function buildStickerPdf(values, labelW, labelH, gapMm) {
   const w = labelW * PDF_MM_TO_PT;
   const h = labelH * PDF_MM_TO_PT;
   const g = gap * PDF_MM_TO_PT;
-  const pt = stickerFontPt(labelW, labelH);
+  const style = stickerTextStyle(labelW, labelH, sizeKey);
+  const pt = style.pt;
   const gridW = layout.cols * w + (layout.cols - 1) * g;
   const left = (PDF_PAGE_W_PT - gridW) / 2;
   const topY = PDF_PAGE_H_PT - PDF_TOP_MM * PDF_MM_TO_PT;
@@ -509,10 +557,10 @@ function buildStickerPdf(values, labelW, labelH, gapMm) {
       const x = left + (i % layout.cols) * (w + g);
       const y = topY - Math.floor(i / layout.cols) * (h + g) - h;
       ops.push('0.6 G 0.6 w [2 2] 0 d ' + f(x) + ' ' + f(y) + ' ' + f(w) + ' ' + f(h) + ' re S');
-      const textW = PDF_DIGIT_EM * pt * text.length;
+      const textW = PDF_DIGIT_EM * pt * text.length * style.scale / 100;
       const tx = x + (w - textW) / 2;
       const ty = y + h / 2 - PDF_HALF_CAP_EM * pt;
-      ops.push('0 g BT /F1 ' + f(pt) + ' Tf ' + f(tx) + ' ' + f(ty) + ' Td (' + escapePdfString(text) + ') Tj ET');
+      ops.push('0 g BT /F1 ' + f(pt) + ' Tf ' + style.scale + ' Tz ' + f(tx) + ' ' + f(ty) + ' Td (' + escapePdfString(text) + ') Tj ET');
     });
     contents.push(ops.join('\n'));
   }
@@ -625,7 +673,7 @@ function saveDraftSoon() {
 }
 
 function saveSizeSettings() {
-  storageSet(SIZE_KEY, JSON.stringify({ mode: getStickerMode(), w: els.stickerW.value, h: els.stickerH.value, gap: els.stickerGap.value }));
+  storageSet(SIZE_KEY, JSON.stringify({ mode: getStickerMode(), w: els.stickerW.value, h: els.stickerH.value, gap: els.stickerGap.value, digit: getDigitSize() }));
 }
 
 function restoreSettings() {
@@ -641,6 +689,8 @@ function restoreSettings() {
   if (typeof saved.w === 'string') els.stickerW.value = saved.w;
   if (typeof saved.h === 'string') els.stickerH.value = saved.h;
   if (typeof saved.gap === 'string') els.stickerGap.value = saved.gap;
+  const digit = ['normal', 'large', 'xlarge'].includes(saved.digit) ? saved.digit : 'normal';
+  document.querySelector('input[name="digit-size"][value="' + digit + '"]').checked = true;
 }
 
 /* ---------- helpers ---------- */
@@ -732,6 +782,12 @@ function getStickerMode() {
   return checked ? checked.value : '45x25';
 }
 
+// Digit size key from the radio group: 'normal' | 'large' | 'xlarge'.
+function getDigitSize() {
+  const checked = document.querySelector('input[name="digit-size"]:checked');
+  return checked ? checked.value : 'normal';
+}
+
 // Gap between cells in millimetres from its input (NaN when empty or not a number).
 function getStickerGap() {
   return els.stickerGap.valueAsNumber;
@@ -762,6 +818,8 @@ function updateStickerPreview() {
     text = layout.cols + ' คอลัมน์ × ' + layout.rows + ' แถว = ' + layout.perPage + ' ดวงต่อแผ่น A4';
     const count = state.parsed.valid.length;
     if (count > 0) text += ' · ใช้ ' + Math.ceil(count / layout.perPage) + ' แผ่น';
+    const style = stickerTextStyle(size.w, size.h, getDigitSize());
+    text += ' · ตัวเลขสูงประมาณ ' + stickerDigitHeightMm(style.pt).toFixed(1) + ' มม.';
   }
   // Only touch the live region when the text changes, so screen readers don't re-announce it on every render.
   if (els.stickerPreview.textContent !== text) els.stickerPreview.textContent = text;
@@ -826,7 +884,7 @@ async function downloadDocx(values) {
     const zip = new JSZip();
     zip.file('[Content_Types].xml', CONTENT_TYPES_XML);
     zip.file('_rels/.rels', ROOT_RELS_XML);
-    zip.file('word/document.xml', buildStickerDocumentXml(values, size.w, size.h, size.gap));
+    zip.file('word/document.xml', buildStickerDocumentXml(values, size.w, size.h, size.gap, getDigitSize()));
     const blob = await zip.generateAsync({ type: 'blob', mimeType: DOCX_MIME });
     await saveBlob(blob, 'stickers-' + buildFileStamp(new Date()) + '.docx', values.length);
   } catch (err) {
@@ -843,7 +901,7 @@ async function downloadPdf(values) {
   }
   if (values.length === 0) return;
   try {
-    const pdf = buildStickerPdf(values, size.w, size.h, size.gap);
+    const pdf = buildStickerPdf(values, size.w, size.h, size.gap, getDigitSize());
     // The PDF source is pure ASCII, so the string is byte-exact as a Blob.
     const blob = new Blob([pdf], { type: 'application/pdf' });
     await saveBlob(blob, 'stickers-' + buildFileStamp(new Date()) + '.pdf', values.length);
@@ -870,6 +928,9 @@ function init() {
   els.stickerW.addEventListener('input', onStickerSettingsChange);
   els.stickerH.addEventListener('input', onStickerSettingsChange);
   els.stickerGap.addEventListener('input', onStickerSettingsChange);
+  document.querySelectorAll('input[name="digit-size"]').forEach((r) => {
+    r.addEventListener('change', onStickerSettingsChange);
+  });
   els.downloadPdf.addEventListener('click', () => downloadPdf(state.parsed.valid));
   els.downloadDocx.addEventListener('click', () => downloadDocx(state.parsed.valid));
   // Keep the draft if the tab closes within the debounce window.

@@ -13,8 +13,8 @@ if (!m) throw new Error('pure markers not found in index.html');
 
 const NAMES = [
   'escapeXml', 'buildFileStamp', 'toastDurationMs', 'parseNumberInput',
-  'computeStickerLayout', 'stickerFontPt', 'stickerFontHalfPoints', 'buildStickerDocumentXml',
-  'escapePdfString', 'buildStickerPdf'
+  'computeStickerLayout', 'stickerFontPt', 'stickerFontHalfPoints', 'stickerTextStyle',
+  'stickerDigitHeightMm', 'buildStickerDocumentXml', 'escapePdfString', 'buildStickerPdf'
 ];
 const ctx = {};
 vm.createContext(ctx);
@@ -142,6 +142,57 @@ tryEq('sticker font: 45x12 -> 37 half-points (18.5 pt)', () => ctx.stickerFontHa
 tryEq('sticker font: half-points are the pt size times 2 (Word and PDF agree)',
   () => ctx.stickerFontHalfPoints(45, 25) === ctx.stickerFontPt(45, 25) * 2, true);
 
+// --- digit size: stickerTextStyle returns { pt, scale } for 'normal' | 'large' | 'xlarge' ---
+const STYLE_KEYS = ['normal', 'large', 'xlarge'];
+const STYLE_SIZES = [];
+for (let w = 20; w <= 200; w += 0.5) for (const h of [5, 7, 12, 25, 100]) STYLE_SIZES.push([w, h]);
+tryEq('digit style: normal equals {pt: stickerFontPt, scale: 100} for 45x25',
+  () => ctx.stickerTextStyle(45, 25, 'normal'), { pt: ctx.stickerFontPt(45, 25), scale: 100 });
+tryEq('digit style: normal equals {pt: stickerFontPt, scale: 100} for 45x12',
+  () => ctx.stickerTextStyle(45, 12, 'normal'), { pt: ctx.stickerFontPt(45, 12), scale: 100 });
+tryEq('digit style: normal literal for 45x25 is 18.5 pt at 100%', () => ctx.stickerTextStyle(45, 25, 'normal'), { pt: 18.5, scale: 100 });
+tryEq('digit style: unknown key falls back to normal', () => ctx.stickerTextStyle(45, 25, 'huge'), { pt: 18.5, scale: 100 });
+tryEq('digit style: missing key falls back to normal', () => ctx.stickerTextStyle(45, 25), { pt: 18.5, scale: 100 });
+tryEq('digit style: large at 45x25 is 24 pt at 80% width', () => ctx.stickerTextStyle(45, 25, 'large'), { pt: 24, scale: 80 });
+tryEq('digit style: xlarge at 45x25 is 29.5 pt at 65% width', () => ctx.stickerTextStyle(45, 25, 'xlarge'), { pt: 29.5, scale: 65 });
+tryEq('digit style: 45x12 large is height-capped at 23.5 pt at 82% width', () => ctx.stickerTextStyle(45, 12, 'large'), { pt: 23.5, scale: 82 });
+tryEq('digit style: 45x12 xlarge cannot grow past the height cap (same as large)',
+  () => ctx.stickerTextStyle(45, 12, 'xlarge'), { pt: 23.5, scale: 82 });
+tryEq('digit style: 45x25 large is taller than normal',
+  () => ctx.stickerTextStyle(45, 25, 'large').pt > ctx.stickerTextStyle(45, 25, 'normal').pt, true);
+tryEq('digit style: 45x25 xlarge is taller than large',
+  () => ctx.stickerTextStyle(45, 25, 'xlarge').pt > ctx.stickerTextStyle(45, 25, 'large').pt, true);
+// 10 digits keep >= 3.5 mm on each side at every allowed size and key (0.3528 mm per pt, 0.556 em per digit).
+tryEq('digit style: 10 digits keep >= 3.5 mm per side for every size and key', () => {
+  for (const [w, h] of STYLE_SIZES) for (const key of STYLE_KEYS) {
+    const st = ctx.stickerTextStyle(w, h, key);
+    const textMm = 10 * 0.556 * st.pt * st.scale / 100 * 0.3528;
+    if (!((w - textMm) / 2 >= 3.5 - 1e-9)) return w + 'x' + h + ' ' + key;
+  }
+  return true;
+}, true);
+tryEq('digit style: height is within h - 2 mm unless the base size is kept', () => {
+  for (const [w, h] of STYLE_SIZES) for (const key of STYLE_KEYS) {
+    const st = ctx.stickerTextStyle(w, h, key);
+    if (!(st.pt * 0.3528 * 1.2 <= h - 2 + 1e-9 || st.pt === ctx.stickerFontPt(w, h))) return w + 'x' + h + ' ' + key;
+  }
+  return true;
+}, true);
+tryEq('digit style: scale is an integer 50..100 and pt is a multiple of 0.5', () => {
+  for (const [w, h] of STYLE_SIZES) for (const key of STYLE_KEYS) {
+    const st = ctx.stickerTextStyle(w, h, key);
+    const ok = Number.isInteger(st.scale) && st.scale >= 50 && st.scale <= 100 && Math.round(st.pt * 2) === st.pt * 2;
+    if (!ok) return w + 'x' + h + ' ' + key;
+  }
+  return true;
+}, true);
+
+// Digit height: cap height 0.718 em, in mm, rounded to 0.1 mm.
+tryEq('digit height: 18.5 pt is 4.7 mm', () => ctx.stickerDigitHeightMm(18.5), 4.7);
+tryEq('digit height: 24 pt is 6.1 mm', () => ctx.stickerDigitHeightMm(24), 6.1);
+tryEq('digit height: 29.5 pt is 7.5 mm', () => ctx.stickerDigitHeightMm(29.5), 7.5);
+tryEq('digit height: returns a number', () => typeof ctx.stickerDigitHeightMm(18.5), 'number');
+
 // --- sticker Word XML ---
 const STICKER_VALUES = ['0012345678', '0000000001', '0999999999', '0812345678', '0898765432'];
 const buildSticker = (...args) => { try { return ctx.buildStickerDocumentXml(...args); } catch (err) { return 'THREW: ' + err.message; } };
@@ -219,6 +270,28 @@ eq('sticker xml pages: file ends with tail paragraph and sectPr',
   twoPages.endsWith('<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>' +
     '<w:pgMar w:top="283" w:right="283" w:bottom="283" w:left="283" w:header="0" w:footer="0" w:gutter="0"/>' +
     '</w:sectPr></w:body></w:document>'), true);
+
+// --- digit size in Word: half-points from style.pt, and w:w condensing when scale < 100 ---
+const buildSticker5 = (...args) => { try { return ctx.buildStickerDocumentXml(...args); } catch (err) { return 'THREW: ' + err.message; } };
+eq('digit xml: normal output equals the call without a size key',
+  buildSticker5(STICKER_VALUES, 45, 25, 3, 'normal') === buildSticker5(STICKER_VALUES, 45, 25, 3), true);
+eq('digit xml: undefined size key equals the call without a size key',
+  buildSticker5(STICKER_VALUES, 45, 25, 3, undefined) === buildSticker5(STICKER_VALUES, 45, 25, 3), true);
+eq('digit xml: normal run has no w:w condensing',
+  buildSticker5(STICKER_VALUES, 45, 25, 3, 'normal').includes('<w:w w:val='), false);
+eq('digit xml: large at 45x25 -> sz 48 and condensed to 80 in schema order (after bCs, before sz)',
+  buildSticker5(STICKER_VALUES, 45, 25, 3, 'large').includes(
+    '<w:bCs/><w:w w:val="80"/><w:sz w:val="48"/><w:szCs w:val="48"/>'), true);
+eq('digit xml: xlarge at 45x25 -> sz 59 and condensed to 65',
+  buildSticker5(STICKER_VALUES, 45, 25, 3, 'xlarge').includes(
+    '<w:bCs/><w:w w:val="65"/><w:sz w:val="59"/><w:szCs w:val="59"/>'), true);
+eq('digit xml: xlarge output is well-formed', wellFormed(buildSticker5(STICKER_VALUES, 45, 25, 3, 'xlarge')), true);
+eq('digit xml: xlarge keeps the leading zeros verbatim',
+  buildSticker5(STICKER_VALUES, 45, 25, 3, 'xlarge').includes('<w:t xml:space="preserve">0012345678</w:t>'), true);
+eq('digit xml: xlarge keeps the layout (same table width as normal)',
+  buildSticker5(STICKER_VALUES, 45, 25, 3, 'xlarge').includes('<w:tblW w:w="10714" w:type="dxa"/>'), true);
+eq('digit xml: unknown key writes the normal output',
+  buildSticker5(STICKER_VALUES, 45, 25, 3, 'huge') === buildSticker5(STICKER_VALUES, 45, 25, 3), true);
 
 // --- sticker fit: the table plus the trailing paragraphs must fit the usable A4 area
 // (16272 twips high, 11340 wide). Cell sizes are read back from the generated XML. ---
@@ -307,7 +380,8 @@ try {
 {
   const text = String(pdf45);
   const tds = [...text.matchAll(/(-?[\d.]+) (-?[\d.]+) Td \(([^)]*)\) Tj/g)];
-  const textW = 0.556 * 18.5 * 10;
+  const st = typeof ctx.stickerTextStyle === 'function' ? ctx.stickerTextStyle(45, 25, 'normal') : { pt: 18.5, scale: 100 };
+  const textW = 0.556 * st.pt * 10 * st.scale / 100;
   eq('pdf: 90 text positions found (45 values, each with Td and Tj)', tds.length, 45);
   eq('pdf: every Td x is at least 5 mm (14.17 pt) from the left edge', tds.every((t) => Number(t[1]) >= 14.17), true);
   eq('pdf: every text right edge is at least 5 mm from the right edge',
@@ -320,6 +394,22 @@ try {
   eq('pdf: empty values -> one blank page', (blank.match(/\/Type \/Page(?!s)/g) || []).length, 1);
   eq('pdf: empty values -> empty content stream', blank.includes('stream\n\nendstream'), true);
   eq('pdf: empty values -> ends with %%EOF', blank.trimEnd().endsWith('%%EOF'), true);
+}
+// Digit size in the PDF: Tz scales the glyphs horizontally, Tf sets the taller size.
+const pdfXl = (() => { try { return String(ctx.buildStickerPdf(PDF_VALUES, 45, 25, 3, 'xlarge')); } catch (e) { return ''; } })();
+eq('pdf digit: normal emits 100 Tz before Td', String(pdf45).includes('/F1 18.50 Tf 100 Tz '), true);
+eq('pdf digit: xlarge uses 29.50 pt and 65 Tz', pdfXl.includes('/F1 29.50 Tf 65 Tz '), true);
+eq('pdf digit: xlarge is still well-formed (every stream /Length matches)',
+  [...pdfXl.matchAll(/\/Length (\d+) >>\nstream\n([\s\S]*?)\nendstream/g)]
+    .every((x) => Number(x[1]) === x[2].length) && pdfXl.trimEnd().endsWith('%%EOF'), true);
+eq('pdf digit: xlarge is pure ASCII', /^[\x00-\x7F]*$/.test(pdfXl), true);
+{
+  // Scaled text width: 0.556 em per digit, times the point size and the horizontal scale.
+  const st = typeof ctx.stickerTextStyle === 'function' ? ctx.stickerTextStyle(45, 25, 'xlarge') : { pt: 29.5, scale: 65 };
+  const textW = 0.556 * st.pt * 10 * st.scale / 100;
+  const tds = [...pdfXl.matchAll(/(-?[\d.]+) (-?[\d.]+) Td \(([^)]*)\) Tj/g)];
+  eq('pdf digit: xlarge every text right edge stays inside the 5 mm margin',
+    tds.length === 45 && tds.every((t) => Number(t[1]) + textW <= 595.28 - 14.17 && Number(t[1]) >= 14.17), true);
 }
 tryEq('pdf: layout 9x25 throws',
   () => { try { ctx.buildStickerPdf(PDF_VALUES, 9, 25, 3); return 'no throw'; } catch (e) { return 'threw'; } }, 'threw');
@@ -421,7 +511,7 @@ eq('dialogs: no window.confirm/alert/prompt call', /(^|[^A-Za-z0-9_])(confirm|al
 }
 
 // Sticker radio fieldset (same as before).
-eq('sticker: fieldset legend present', src.includes('<legend>ขนาดสติกเกอร์ (ไฟล์ Word)</legend>'), true);
+eq('sticker: fieldset legend present', src.includes('<legend>ขนาดดวงสติกเกอร์</legend>'), true);
 eq('sticker: 45x25 radio is checked by default', src.includes('<input type="radio" name="sticker" value="45x25" checked>'), true);
 eq('sticker: 45x12 radio present', src.includes('<input type="radio" name="sticker" value="45x12">'), true);
 eq('sticker: custom radio present', src.includes('<input type="radio" name="sticker" value="custom">'), true);
@@ -436,10 +526,35 @@ eq('sticker: print hint',
 eq('sticker: preview shows columns, rows and sheet count',
   fnBodyAt('function updateStickerPreview(').includes(' คอลัมน์ × ') && fnBodyAt('function updateStickerPreview(').includes(' ดวงต่อแผ่น A4'), true);
 
+// Digit size: a radio group next to the gap input, saved with the size, shown in the preview.
+eq('digit size: legend', src.includes('<legend>ขนาดตัวเลข</legend>'), true);
+eq('digit size: normal radio is checked by default',
+  src.includes('<input type="radio" name="digit-size" value="normal" checked>'), true);
+eq('digit size: large radio', src.includes('<input type="radio" name="digit-size" value="large">'), true);
+eq('digit size: xlarge radio', src.includes('<input type="radio" name="digit-size" value="xlarge">'), true);
+eq('digit size: labels ปกติ / ใหญ่ / ใหญ่มาก',
+  src.includes('<span>ปกติ</span>') && src.includes('<span>ใหญ่</span>') && src.includes('<span>ใหญ่มาก</span>'), true);
+eq('digit size: radio group is a radiogroup after the gap input',
+  src.indexOf('name="digit-size"') > src.indexOf('id="sticker-gap"') && /role="radiogroup"[^>]*aria-label="ขนาดตัวเลข"/.test(src), true);
+eq('digit size: change listener on the digit radios',
+  /document\.querySelectorAll\('input\[name="digit-size"\]'\)/.test(src), true);
+eq('digit size: getDigitSize helper exists', fnBodyAt('function getDigitSize(').length > 0, true);
+eq('digit size: saved with the size settings', fnBodyAt('function saveSizeSettings(').includes('digit: getDigitSize()'), true);
+eq('digit size: restored from saved.digit, default normal',
+  fnBodyAt('function restoreSettings(').includes('saved.digit') && fnBodyAt('function restoreSettings(').includes("'normal'"), true);
+eq('digit size: preview appends the digit height in mm',
+  fnBodyAt('function updateStickerPreview(').includes('ตัวเลขสูงประมาณ') &&
+  fnBodyAt('function updateStickerPreview(').includes('stickerDigitHeightMm(') &&
+  fnBodyAt('function updateStickerPreview(').includes("' มม.'"), true);
+eq('digit size: preview height uses one decimal', fnBodyAt('function updateStickerPreview(').includes('toFixed(1)'), true);
+eq('digit size: PDF download passes the digit size', fnBodyAt('async function downloadPdf(').includes('getDigitSize()'), true);
+
 // Download: sticker XML only, size guard, disabled rules.
 const dlBody = fnBodyAt('async function downloadDocx(');
 eq('sticker: downloadDocx calls buildStickerDocumentXml', dlBody.includes('buildStickerDocumentXml('), true);
 eq('sticker: downloadDocx passes the gap', dlBody.includes('size.gap'), true);
+eq('digit size: downloadDocx passes the digit size as the 5th argument',
+  dlBody.includes('buildStickerDocumentXml(values, size.w, size.h, size.gap, getDigitSize())'), true);
 eq('sticker: downloadDocx refuses an invalid size with its toast', dlBody.includes('ขนาดสติกเกอร์ไม่ถูกต้อง'), true);
 eq('sticker: downloadDocx names the file stickers-<stamp>.docx', dlBody.includes("'stickers-' + buildFileStamp(new Date()) + '.docx'"), true);
 eq('sticker: downloadDocx saves through saveBlob', dlBody.includes('saveBlob('), true);
@@ -449,7 +564,8 @@ eq('sticker: download button disabled when no valid numbers or size invalid',
 // PDF download: buildStickerPdf, its own blob type and file name, same guards.
 const pdfBody = fnBodyAt('async function downloadPdf(');
 eq('pdf download: function exists', pdfBody.length > 0, true);
-eq('pdf download: calls buildStickerPdf with the gap', pdfBody.includes('buildStickerPdf(values, size.w, size.h, size.gap)'), true);
+eq('pdf download: calls buildStickerPdf with the gap and the digit size',
+  pdfBody.includes('buildStickerPdf(values, size.w, size.h, size.gap, getDigitSize())'), true);
 eq('pdf download: refuses an invalid size with the same toast', pdfBody.includes('ขนาดสติกเกอร์ไม่ถูกต้อง'), true);
 eq('pdf download: PDF blob type',
   pdfBody.includes("new Blob([pdf], { type: 'application/pdf' })"), true);
