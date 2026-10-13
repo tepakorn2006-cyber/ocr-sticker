@@ -2,7 +2,7 @@
 
 Single-page web app for Thai, non-technical users. Upload photos (mostly phone photos of Thai SIM-card labels), OCR them in the browser, keep only exactly-10-digit number strings, let the user review/edit, then export a `.docx` laid out to print onto A4 sticker-label sheets (one number per label). UI text is Thai; code and comments are English.
 
-Forked from the separate `ocr-to-word` project, which is still live and in use. Never push to, edit, or delete anything in the `tepakorn2006-cyber/ocr-to-word` repo or the `C:\Users\Windows10\Claude-Work\ocr-to-word` folder. This project deploys to its own repo, `tepakorn2006-cyber/ocr-sticker` (GitHub Pages from `main` root), once the user approves.
+Forked from the separate `ocr-to-word` project, which is still live and in use. Never push to, edit, or delete anything in the `tepakorn2006-cyber/ocr-to-word` repo or the `C:\Users\Windows10\Claude-Work\ocr-to-word` folder. This project lives in its own repo, `tepakorn2006-cyber/ocr-sticker`, live at https://tepakorn2006-cyber.github.io/ocr-sticker/ (GitHub Pages, `main` branch root).
 
 ## Invariants
 
