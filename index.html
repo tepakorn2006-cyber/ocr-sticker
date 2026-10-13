@@ -1,0 +1,3052 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OCR เลข 10 หลัก → Word สำหรับกระดาษสติกเกอร์</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f3f5f9;
+    --card: #ffffff;
+    --text: #1b2330;
+    --muted: #5b6676;
+    --border: #d7dde8;
+    --primary: #2563eb;
+    --primary-text: #ffffff;
+    --accent-soft: #e8efff;
+    --success: #15803d; --success-bg: #e7f6ec;
+    --warning: #8a5a00; --warning-bg: #fff5d6;
+    --error: #b42318;   --error-bg: #fdeceb; --danger-solid: #b42318; --danger-solid-text: #ffffff;
+    --info: #1d4ed8;    --info-bg: #e8efff;
+    --conflict: #92400e; --conflict-bg: #fef3c7;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 4px 16px rgba(16, 24, 40, .06);
+    --focus: 0 0 0 3px rgba(37, 99, 235, .35);
+    --font: 'Sarabun', Tahoma, system-ui, sans-serif;
+    --mono: 'JetBrains Mono', Consolas, 'Courier New', monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f141c;
+      --card: #171d27;
+      --text: #e7ecf4;
+      --muted: #9aa6b8;
+      --border: #2b3546;
+      --primary: #5b8cff;
+      --primary-text: #0b1220;
+      --accent-soft: #1d2a47;
+      --success: #6fd08f; --success-bg: #11301e;
+      --warning: #f1c65a; --warning-bg: #33290f;
+      --error: #ff8a80;   --error-bg: #3a1717; --danger-solid: #ff8a80; --danger-solid-text: #0b1220;
+      --info: #8fb0ff;    --info-bg: #1d2a47;
+      --conflict: #fcd34d; --conflict-bg: #3b2a08;
+      --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f141c;
+    --card: #171d27;
+    --text: #e7ecf4;
+    --muted: #9aa6b8;
+    --border: #2b3546;
+    --primary: #5b8cff;
+    --primary-text: #0b1220;
+    --accent-soft: #1d2a47;
+    --success: #6fd08f; --success-bg: #11301e;
+    --warning: #f1c65a; --warning-bg: #33290f;
+    --error: #ff8a80;   --error-bg: #3a1717; --danger-solid: #ff8a80; --danger-solid-text: #0b1220;
+    --info: #8fb0ff;    --info-bg: #1d2a47;
+    --conflict: #fcd34d; --conflict-bg: #3b2a08;
+    --shadow: none;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.55;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  h1 { font-size: 1.35rem; margin: 0; }
+  h2 { font-size: 1.1rem; margin: 0 0 12px; }
+  p { margin: 0; }
+  .muted { color: var(--muted); font-size: .92rem; }
+  .mono { font-family: var(--mono); }
+
+  .app-header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 16px;
+  }
+  .app-header .inner { max-width: 1200px; margin: 0 auto; display: grid; gap: 4px; }
+
+  .layout {
+    display: grid;
+    gap: 16px;
+    padding: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .col-side { display: grid; gap: 16px; min-width: 0; }
+  @media (min-width: 960px) {
+    .layout { grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); align-items: start; }
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    min-width: 0;
+  }
+
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 20px 16px;
+    text-align: center;
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+    transition: background .15s, border-color .15s;
+  }
+  .dropzone.dragover { border-color: var(--primary); background: var(--accent-soft); }
+
+  .preview { margin-top: 16px; display: grid; gap: 10px; }
+  .preview img {
+    width: 100%;
+    max-height: 260px;
+    object-fit: contain;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .file-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: space-between; word-break: break-all; }
+
+  .btn {
+    font: inherit;
+    padding: 9px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    cursor: pointer;
+    min-height: 40px;
+  }
+  .btn:hover:not(:disabled) { border-color: var(--primary); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background: var(--primary); color: var(--primary-text); border-color: transparent; width: 100%; font-weight: 600; }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.05); border-color: transparent; }
+  .btn-small { min-height: 34px; padding: 5px 10px; font-size: .9rem; }
+  .btn-danger { color: var(--error); }
+  button:focus-visible, input:focus-visible, summary:focus-visible, .chip:focus-within {
+    outline: none;
+    box-shadow: var(--focus);
+  }
+
+  fieldset { border: 0; padding: 0; margin: 0 0 14px; min-width: 0; }
+  legend { font-weight: 600; margin-bottom: 8px; padding: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    position: relative;
+    display: inline-flex;
+    cursor: pointer;
+  }
+  .chip input { position: absolute; opacity: 0; pointer-events: none; }
+  .chip span {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 14px;
+    background: var(--card);
+    font-size: .95rem;
+  }
+  .chip input:checked + span {
+    background: var(--primary);
+    color: var(--primary-text);
+    border-color: transparent;
+  }
+  .chip input:focus-visible + span { box-shadow: var(--focus); }
+
+  .field-inline { display: grid; gap: 6px; margin-top: 10px; }
+  .field-inline label { font-size: .95rem; }
+  #group-preview.field-error { color: var(--error); }
+  #sticker-preview.field-error { color: var(--error); }
+  input[type="number"] {
+    font: inherit;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    width: 160px;
+    max-width: 100%;
+  }
+
+  .check { display: flex; gap: 10px; align-items: flex-start; margin: 4px 0 16px; cursor: pointer; }
+  .check input { margin-top: 5px; width: 18px; height: 18px; flex: 0 0 auto; accent-color: var(--primary); }
+
+  progress {
+    width: 100%;
+    height: 10px;
+    margin-top: 14px;
+    accent-color: var(--primary);
+  }
+  .progress-text { margin-top: 6px; font-size: .92rem; color: var(--muted); }
+
+  .alert {
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-top: 12px;
+    border: 1px solid transparent;
+    font-size: .95rem;
+    display: grid;
+    gap: 4px;
+  }
+  .alert.error { background: var(--error-bg); color: var(--error); border-color: var(--error); }
+  .alert.warning { background: var(--warning-bg); color: var(--warning); border-color: var(--warning); }
+  .alert.success { background: var(--success-bg); color: var(--success); border-color: var(--success); }
+  .alert.info { background: var(--info-bg); color: var(--info); border-color: var(--info); }
+
+  .counters { font-weight: 600; margin-bottom: 8px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+
+  .rows { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .row {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card);
+  }
+  .row.invalid { border-color: var(--error); }
+  .row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
+  .row .idx { color: var(--muted); font-family: var(--mono); min-width: 2.2em; text-align: right; }
+  .row-main { display: grid; gap: 2px; min-width: 0; }
+  .row-main .badge { justify-self: start; margin: 2px 0 0; }
+  .value {
+    font-family: var(--mono);
+    font-size: 1.05rem;
+    letter-spacing: .06em;
+    width: 100%;
+    min-width: 0;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+  }
+  .row.invalid .value { border-color: var(--error); }
+  .row-err { color: var(--error); font-size: .85rem; }
+  /* Narrow screens: the value input gets its own full-width line under the controls. */
+  @media (max-width: 480px) {
+    .row { grid-template-columns: auto auto minmax(0, 1fr) auto auto; }
+    .row > .btn-small { justify-self: end; }
+    .row > .row-main { grid-column: 1 / -1; order: 2; }
+    .row > .btn-small:nth-of-type(1) { order: 1; }
+    .row > .btn-small:nth-of-type(2) { order: 1; }
+  }
+  .badge {
+    font-size: .75rem;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--warning-bg);
+    color: var(--warning);
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .empty { padding: 18px 0; text-align: center; color: var(--muted); }
+
+  details {
+    margin-top: 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+  }
+  summary { cursor: pointer; font-weight: 600; }
+  details > .near-list { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 8px; }
+  .near-list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+  pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--mono);
+    font-size: .9rem;
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 10px;
+    max-height: 280px;
+    overflow: auto;
+    margin: 10px 0 0;
+  }
+
+  .footer {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 8px 16px 24px;
+    display: grid;
+    gap: 6px;
+    text-align: center;
+  }
+  .flow { font-weight: 600; }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    background: var(--text);
+    color: var(--card);
+    padding: 10px 16px;
+    border-radius: 999px;
+    box-shadow: var(--shadow);
+    max-width: calc(100% - 32px);
+    font-size: .95rem;
+    z-index: 10;
+  }
+
+  /* ---- multi-image grid, group dividers, confirm dialog ---- */
+  input[type="text"] {
+    font: inherit;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    width: 100%;
+    max-width: 280px;
+  }
+  .btn-block { width: 100%; margin-top: 8px; }
+  .btn-ok { background: var(--primary); color: var(--primary-text); border-color: transparent; font-weight: 600; }
+  .btn-ok.danger { background: var(--danger-solid); color: var(--danger-solid-text); }
+  .image-section { margin-top: 14px; display: grid; gap: 8px; }
+  .image-toolbar { margin: 0; justify-content: space-between; align-items: center; }
+  .thumb-grid {
+    list-style: none; padding: 0; margin: 0;
+    display: grid; gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+  .thumb-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px;
+    display: grid;
+    gap: 6px;
+    background: var(--card);
+    min-width: 0;
+  }
+  .thumb-card img {
+    width: 100%;
+    height: 110px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+  }
+  .thumb-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-weight: 600; font-size: .9rem; }
+  .thumb-name { font-size: .8rem; word-break: break-all; }
+  .thumb-card .muted { font-size: .8rem; }
+  .thumb-actions { display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; }
+  .thumb-actions .btn-small { min-height: 30px; padding: 3px 8px; }
+  .status {
+    font-size: .78rem;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--muted);
+    justify-self: end;
+    white-space: nowrap;
+  }
+  .status.reading { background: var(--info-bg); color: var(--info); }
+  .status.done { background: var(--success-bg); color: var(--success); }
+  .status.error { background: var(--error-bg); color: var(--error); }
+  .badge.badge-img { background: var(--info-bg); color: var(--info); }
+  .badge.badge-conflict { background: var(--conflict-bg); color: var(--conflict); }
+  .hint { margin-top: 8px; }
+  .group-divider {
+    list-style: none;
+    padding: 8px 4px 2px;
+    font-weight: 600;
+    font-size: .9rem;
+    color: var(--primary);
+    border-bottom: 1px dashed var(--border);
+  }
+  .group-divider .muted { font-weight: 400; margin-left: 8px; }
+  .raw-list { display: grid; gap: 8px; margin-top: 10px; }
+  .raw-list details { margin-top: 0; }
+  .confirm-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, .45);
+    display: grid; place-items: center;
+    padding: 16px;
+    z-index: 20;
+  }
+  dialog.confirm-dialog {
+    border: 0; padding: 0; background: transparent;
+    max-width: min(420px, calc(100% - 32px));
+    color: var(--text);
+  }
+  dialog.confirm-dialog::backdrop { background: rgba(0, 0, 0, .45); }
+  .confirm-box {
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    display: grid;
+    gap: 16px;
+    width: 100%;
+  }
+  .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="inner">
+    <h1>อ่านเลข 10 หลักจากรูป แล้วทำไฟล์ Word สำหรับพิมพ์สติกเกอร์</h1>
+    <p class="muted">ประมวลผลในเบราว์เซอร์ รูปภาพไม่ถูกอัปโหลดไปเซิร์ฟเวอร์</p>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="col-side">
+
+    <!-- SECTION 1: images -->
+    <section class="card" aria-labelledby="h-upload">
+      <h2 id="h-upload">1. อัปโหลดรูปภาพ</h2>
+      <div id="dropzone" class="dropzone">
+        <p>ลากไฟล์รูปมาวางที่นี่ หรือกด Ctrl+V เพื่อวางรูปจากคลิปบอร์ด</p>
+        <p class="muted">รองรับ JPG, PNG, WEBP (รวมไฟล์ .jfif) · เลือกได้หลายรูป</p>
+        <button type="button" id="pick-btn" class="btn">เพิ่มรูป</button>
+        <input type="file" id="file-input" accept="image/*,.jfif" multiple hidden aria-label="เลือกไฟล์รูปภาพ">
+      </div>
+      <p id="upload-error" class="alert error" role="alert" hidden></p>
+
+      <div id="image-section" class="image-section" hidden>
+        <div class="toolbar image-toolbar">
+          <span id="image-count" class="muted"></span>
+          <button type="button" id="clear-images-btn" class="btn btn-small btn-danger">ลบรูปทั้งหมด</button>
+        </div>
+        <ul id="image-grid" class="thumb-grid" aria-label="รายการรูปภาพ"></ul>
+      </div>
+    </section>
+
+    <!-- SECTION 2: settings -->
+    <section class="card" aria-labelledby="h-settings">
+      <h2 id="h-settings">2. ตั้งค่าและประมวลผล</h2>
+      <fieldset>
+        <legend>จำนวนชุดที่ต้องการ</legend>
+        <div class="chips" role="radiogroup" aria-label="จำนวนชุดที่ต้องการ">
+          <label class="chip"><input type="radio" name="qty" value="10"><span>10</span></label>
+          <label class="chip"><input type="radio" name="qty" value="50"><span>50</span></label>
+          <label class="chip"><input type="radio" name="qty" value="100"><span>100</span></label>
+          <label class="chip"><input type="radio" name="qty" value="all" checked><span>ทั้งหมด</span></label>
+          <label class="chip"><input type="radio" name="qty" value="custom"><span>กำหนดเอง</span></label>
+        </div>
+        <div id="custom-wrap" class="field-inline" hidden>
+          <label for="custom-qty">จำนวนที่กำหนดเอง (อย่างน้อย 1)</label>
+          <input type="number" id="custom-qty" min="1" step="1" value="20" inputmode="numeric">
+        </div>
+      </fieldset>
+
+      <label class="check">
+        <input type="checkbox" id="fix-confusions" checked>
+        <span>แก้ตัวอักษรที่ OCR มักอ่านสลับกับตัวเลข</span>
+      </label>
+
+      <fieldset>
+        <legend>ลำดับผลลัพธ์</legend>
+        <div class="chips" role="radiogroup" aria-label="ลำดับผลลัพธ์">
+          <label class="chip"><input type="radio" name="order" value="rows" checked><span>เรียงตามบรรทัด (ซ้าย→ขวา)</span></label>
+          <label class="chip"><input type="radio" name="order" value="columns"><span>เรียงตามคอลัมน์ (บน→ล่าง)</span></label>
+        </div>
+        <p class="muted hint">ถ้าในรูปมีหลายคอลัมน์ ให้เลือกเรียงตามคอลัมน์</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>ขนาดสติกเกอร์ (ไฟล์ Word)</legend>
+        <div class="chips" role="radiogroup" aria-label="ขนาดสติกเกอร์ (ไฟล์ Word)">
+          <label class="chip"><input type="radio" name="sticker" value="45x25" checked><span>45 × 25 มม.</span></label>
+          <label class="chip"><input type="radio" name="sticker" value="45x12"><span>45 × 12 มม.</span></label>
+          <label class="chip"><input type="radio" name="sticker" value="custom"><span>กำหนดเอง</span></label>
+        </div>
+        <div id="sticker-custom-wrap" class="field-inline" hidden>
+          <label for="sticker-w">กว้าง (มม.)</label>
+          <input type="number" id="sticker-w" min="10" step="0.5" value="45" inputmode="decimal">
+          <label for="sticker-h">สูง (มม.)</label>
+          <input type="number" id="sticker-h" min="5" step="0.5" value="25" inputmode="decimal">
+        </div>
+        <div class="field-inline">
+          <p id="sticker-preview" class="muted" role="status" aria-live="polite"></p>
+          <p class="muted hint">ก่อนพิมพ์จริง ลองพิมพ์ลงกระดาษธรรมดา 1 แผ่นแล้วทาบกับบัตรซิม · ตอนสั่งพิมพ์ให้เลือกกระดาษ A4 และขนาด 100% (ไม่ย่อให้พอดีหน้า)</p>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>แบ่งกลุ่มตอนคัดลอก</legend>
+        <div class="chips" role="radiogroup" aria-label="แบ่งกลุ่มตอนคัดลอก">
+          <label class="chip"><input type="radio" name="group" value="none" checked><span>ไม่แบ่ง</span></label>
+          <label class="chip"><input type="radio" name="group" value="5"><span>ทีละ 5</span></label>
+          <label class="chip"><input type="radio" name="group" value="10"><span>ทีละ 10</span></label>
+          <label class="chip"><input type="radio" name="group" value="custom"><span>กำหนดเอง</span></label>
+        </div>
+        <div id="group-custom-wrap" class="field-inline" hidden>
+          <label for="group-custom">จำนวนต่อกลุ่ม (อย่างน้อย 1)</label>
+          <input type="number" id="group-custom" min="1" step="1" value="10" inputmode="numeric">
+        </div>
+        <div class="field-inline">
+          <label for="group-label">ข้อความหัวกลุ่ม</label>
+          <input type="text" id="group-label" value="กลุ่มที่" maxlength="60" autocomplete="off">
+          <p id="group-preview" class="muted" role="status" aria-live="polite"></p>
+        </div>
+      </fieldset>
+
+      <button type="button" id="run-btn" class="btn btn-primary" disabled>เริ่มอ่านข้อความ</button>
+      <button type="button" id="stop-ocr" class="btn" hidden>หยุด</button>
+      <button type="button" id="rerun-all-btn" class="btn btn-block" disabled>อ่านใหม่ทั้งหมด</button>
+
+      <progress id="progress" max="1" value="0" hidden aria-label="ความคืบหน้าการอ่านข้อความ"></progress>
+      <p id="progress-text" class="progress-text" hidden></p>
+      <div id="alert" class="alert" role="status" aria-live="polite" hidden></div>
+    </section>
+  </div>
+
+  <!-- SECTION 3: results -->
+  <section class="card" aria-labelledby="h-results">
+    <h2 id="h-results">3. ผลลัพธ์</h2>
+    <p id="counters" class="counters" aria-live="polite"></p>
+    <div id="result-msg" class="alert warning" role="status" aria-live="polite" hidden></div>
+
+    <div class="toolbar">
+      <button type="button" id="select-toggle" class="btn btn-small">เลือกทั้งหมด / ยกเลิก</button>
+      <button type="button" id="copy-selected" class="btn btn-small" disabled>คัดลอกที่เลือก</button>
+      <button type="button" id="copy-all" class="btn btn-small" disabled>คัดลอกทั้งหมด</button>
+      <button type="button" id="copy-word" class="btn btn-small" disabled>คัดลอกสำหรับ Word</button>
+      <button type="button" id="download-docx" class="btn btn-small" disabled>ดาวน์โหลด Word (.docx)</button>
+      <button type="button" id="add-row" class="btn btn-small">+ เพิ่มแถว</button>
+      <button type="button" id="clear-results" class="btn btn-small btn-danger" disabled>ล้างผลลัพธ์ทั้งหมด</button>
+    </div>
+
+    <ul id="rows" class="rows" aria-label="รายการชุดตัวเลข"></ul>
+    <p id="empty" class="empty">ยังไม่มีผลลัพธ์ กรุณาเพิ่มรูปแล้วกดเริ่มอ่านข้อความ</p>
+
+    <details id="near-details">
+      <summary>ตัวเลขที่ไม่แน่ใจ / ยาวไม่ครบหรือเกิน 10 หลัก (ไม่ถูกรวมอัตโนมัติ)</summary>
+      <ul id="near-list" class="near-list"></ul>
+      <p id="near-empty" class="muted" hidden>ไม่มีรายการ</p>
+    </details>
+
+    <details>
+      <summary>ข้อความดิบจาก OCR (แยกตามรูป)</summary>
+      <div id="raw-list" class="raw-list"></div>
+    </details>
+  </section>
+</main>
+
+<footer class="footer">
+  <p class="flow">อัปโหลด → อ่าน → กรอง 10 หลัก → เลือกจำนวน → ตรวจสอบ → ส่งออก Word สำหรับพิมพ์สติกเกอร์</p>
+</footer>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="vendor/jszip/jszip.min.js"></script>
+<script src="vendor/paddle/ort.wasm.min.js"></script>
+
+<script>
+/* @pure-start */
+// Pure logic. Every number stays a string from OCR to export.
+
+const CONFUSION_MAP = {
+  O: '0', o: '0', Q: '0', D: '0',
+  I: '1', l: '1', '|': '1', i: '1', '!': '1',
+  Z: '2', z: '2',
+  S: '5', s: '5',
+  B: '8',
+  G: '6'
+};
+const CONFUSION_CHARS_RE = /[OoQDIl|i!ZzSsBG]/g;
+
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+const CONTENT_TYPES_XML =
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+  '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+  '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+  '<Default Extension="xml" ContentType="application/xml"/>' +
+  '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+  '</Types>';
+const ROOT_RELS_XML =
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+  '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+  '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+  '</Relationships>';
+
+function isValidSet(value) {
+  return typeof value === 'string' && /^\d{10}$/.test(value);
+}
+
+// Text of a row value input: digits only, at most 10. Cleaning happens before the cut, so a pasted
+// "081-234-5678" is read in full.
+function cleanSetInput(s) {
+  return String(s == null ? '' : s).replace(/\D/g, '').slice(0, 10);
+}
+
+// The row value after an edit the browser has applied. raw: the input text, caret: its caret position, inputType: the
+// input event type. A typed digit that would make more than 10 digits is rejected: the caller restores the previous
+// value and caret. Otherwise the text is cleaned (cleanSetInput) and the caret moves back by the non-digits removed
+// before it.
+function cleanSetEdit(raw, caret, inputType) {
+  const text = String(raw == null ? '' : raw);
+  if (inputType === 'insertText' && text.replace(/\D/g, '').length > 10) {
+    return { reject: true, value: '', caret: 0 };
+  }
+  const pos = Math.max(0, Math.min(text.length, caret == null ? text.length : caret));
+  // Deleting never cuts to 10: an 11-12 digit near-miss row must lose only the digit the user removed.
+  const value = /^delete/.test(inputType || '') ? text.replace(/\D/g, '') : cleanSetInput(text);
+  return { reject: false, value, caret: Math.min(text.slice(0, pos).replace(/\D/g, '').length, value.length) };
+}
+
+// Whether a paste into this target is text entry: a text, number or search field, a textarea or editable text.
+// Radio chips, checkboxes, buttons and file inputs are not text entry.
+function isTextEntryTarget(t) {
+  if (!t) return false;
+  return t.tagName === 'TEXTAREA' || !!t.isContentEditable ||
+    (t.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset|file|range|color|image)$/i.test(t.type));
+}
+
+// How long a toast stays: 1.5 s plus 70 ms per character, between 2.8 s and 10 s.
+function toastDurationMs(message) {
+  return Math.min(10000, Math.max(2800, 1500 + String(message == null ? '' : message).length * 70));
+}
+
+// Maximal runs of characters that OCR may have confused with digits.
+const CONFUSABLE_RUN_RE = /[0-9OoQDIl|i!ZzSsBG]+/g;
+
+function convertConfusables(s) {
+  return s.replace(CONFUSION_CHARS_RE, (ch) => CONFUSION_MAP[ch]);
+}
+
+// Converts confusable letters inside each maximal run, but only when the run yields exactly
+// 10 characters with >= 6 real digits. Letters at the ends of a longer run are stripped
+// (left as-is, acting as separators) until the window is 10 chars. Anything else is unchanged.
+function fixConfusionsInLine(line) {
+  return line.replace(CONFUSABLE_RUN_RE, (run) => {
+    let start = 0;
+    let end = run.length;
+    while (end - start > 10 && !/\d/.test(run[start])) start++;
+    while (end - start > 10 && !/\d/.test(run[end - 1])) end--;
+    if (end - start !== 10) return run;
+    const core = run.slice(start, end);
+    if ((core.match(/\d/g) || []).length < 6) return run;
+    return run.slice(0, start) + convertConfusables(core) + run.slice(end);
+  });
+}
+
+// Joins digit groups separated by single '-' or ' ' within one maximal sequence.
+// A run of 10 or more digits is a hard separator: it is never merged or joined, and the groups on each side of it
+// are merged on their own. The plain \d+ scan reads the run itself.
+// Within one side (groups only, no long run):
+//   Exact: a greedy window of groups totalling 10 digits, >= 2 groups, every group >= 2 digits, first group >= 3 digits.
+//   Near miss: only when the side has no exact window, and the whole side (>= 2 groups, every group >= 2 digits)
+//   totals 8, 9, 11 or 12 digits; then it is joined so it is reported as one number.
+// Sequence boundaries (non-digit, non-separator) and the separators between parts are kept as they are.
+function mergeSplitSequence(seq) {
+  const runs = [];
+  const re = /\d+/g;
+  let m;
+  while ((m = re.exec(seq)) !== null) {
+    runs.push({ start: m.index, end: m.index + m[0].length, digits: m[0] });
+  }
+  // Replacements {start, end, text} over seq, in order. Text between them, separators included, is copied as is.
+  const replacements = [];
+  let part = [];
+  const flush = () => {
+    replacements.push(...groupReplacements(part));
+    part = [];
+  };
+  for (const r of runs) {
+    if (r.digits.length >= 10) flush();
+    else part.push(r);
+  }
+  flush();
+  let out = '';
+  let pos = 0;
+  for (const rep of replacements) {
+    out += seq.slice(pos, rep.start) + rep.text;
+    pos = rep.end;
+  }
+  return out + seq.slice(pos);
+}
+
+// Replacements for one side of a sequence: runs of 1 to 9 digits only, in order.
+// Exact windows come first; the near-miss join is used only when the side has no exact window.
+function groupReplacements(part) {
+  if (part.length < 2) return [];
+  const windows = [];
+  let i = 0;
+  while (i < part.length) {
+    let total = 0;
+    let j = i;
+    while (j < part.length && total + part[j].digits.length <= 10) {
+      total += part[j].digits.length;
+      j++;
+    }
+    const group = part.slice(i, j);
+    const ok = total === 10 && group.length >= 2 &&
+      group.every((r) => r.digits.length >= 2) && group[0].digits.length >= 3;
+    if (ok) {
+      windows.push({ start: part[i].start, end: part[j - 1].end, text: group.map((r) => r.digits).join('') });
+      i = j;
+    } else {
+      i++;
+    }
+  }
+  if (windows.length > 0) return windows;
+  const allGroupsOk = part.every((r) => r.digits.length >= 2);
+  const total = part.reduce((s, r) => s + r.digits.length, 0);
+  if (allGroupsOk && [8, 9, 11, 12].includes(total)) {
+    return [{ start: part[0].start, end: part[part.length - 1].end, text: part.map((r) => r.digits).join('') }];
+  }
+  return [];
+}
+
+// Sets checked on OCR rows by their position among OCR rows only (manual rows untouched).
+// target: a count, Infinity for "all", or null for an invalid custom value (selects none).
+function applyOcrSelection(rows, target) {
+  let n = 0;
+  for (const row of rows) {
+    if (row.source === 'ocr') {
+      const k = n++;
+      row.checked = target !== null && k < target;
+    }
+  }
+  return rows;
+}
+
+// The quantity rule for the rows of one newly read image (newRows: the row objects just added, in row order).
+// The quota left for them is target minus every checked OCR row outside the new block, wherever it sits, so the
+// total of checked OCR rows never goes above the target. The new rows fill that room in order.
+// Other rows keep their checked flags. target: a count, Infinity for "all" (every new row checked), or null for an
+// invalid custom value (no new row checked).
+function applySelectionToNewRows(rows, newRows, target) {
+  const isNew = new Set(newRows);
+  let outside = 0;
+  for (const row of rows) {
+    if (row.source === 'ocr' && !isNew.has(row) && row.checked) outside++;
+  }
+  let room = 0;
+  if (target === Infinity) room = Infinity;
+  else if (target !== null) room = target - outside;
+  newRows.forEach((row, k) => {
+    row.checked = k < room;
+  });
+  return rows;
+}
+
+function extractNumbers(text, fixConfusions) {
+  const exact = [];
+  const nearMiss = [];
+  const lines = String(text == null ? '' : text).split(/\r?\n/);
+  for (const raw of lines) {
+    let line = fixConfusions ? fixConfusionsInLine(raw) : raw;
+    line = line.replace(/\d+(?:[- ]\d+)+/g, mergeSplitSequence);
+    const runs = line.match(/\d+/g) || [];
+    for (const run of runs) {
+      if (run.length === 10) {
+        exact.push(run);
+      } else if (run.length === 8 || run.length === 9 || run.length === 11 || run.length === 12) {
+        nearMiss.push(run);
+      }
+    }
+  }
+  return { exact, nearMiss };
+}
+
+function escapeXml(value) {
+  return String(value)
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '') // illegal in XML; Word rejects the file
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+// Splits values into consecutive groups of `size`, numbered from 1. size null or 0 means one group.
+function groupValues(values, size) {
+  if (values.length === 0) return [];
+  if (!size) {
+    return [{ index: 1, start: 1, end: values.length, values: values.slice() }];
+  }
+  const groups = [];
+  for (let i = 0; i < values.length; i += size) {
+    const chunk = values.slice(i, i + size);
+    groups.push({ index: groups.length + 1, start: i + 1, end: i + chunk.length, values: chunk });
+  }
+  return groups;
+}
+
+function numberParagraphXml(v) {
+  return '<w:p><w:r><w:rPr><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/><w:sz w:val="24"/></w:rPr>' +
+    '<w:t xml:space="preserve">' + escapeXml(v) + '</w:t></w:r></w:p>';
+}
+
+function groupLabelParagraphXml(text) {
+  return '<w:p><w:pPr><w:spacing w:before="240"/></w:pPr><w:r><w:rPr>' +
+    '<w:rFonts w:ascii="Tahoma" w:hAnsi="Tahoma" w:cs="Tahoma"/><w:b/><w:bCs/></w:rPr>' +
+    '<w:t xml:space="preserve">' + escapeXml(text) + '</w:t></w:r></w:p>';
+}
+
+const GROUP_SEPARATOR_XML =
+  '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="999999"/></w:pBdr>' +
+  '<w:spacing w:before="0" w:after="120"/></w:pPr></w:p>';
+
+function formatGroupLabel(prefix, g) {
+  return prefix + ' ' + g.index + ' (ลำดับ ' + g.start + '–' + g.end + ')';
+}
+
+function groupOptsOf(opts) {
+  return {
+    groupSize: opts && opts.groupSize ? opts.groupSize : null,
+    labelPrefix: opts && opts.labelPrefix != null ? String(opts.labelPrefix) : 'กลุ่มที่'
+  };
+}
+
+// Plain text for the clipboard: one number per line; with grouping, a label line before each group
+// and a blank line between groups.
+function buildPlainText(values, opts) {
+  const o = groupOptsOf(opts);
+  if (!o.groupSize) return values.join('\n');
+  return groupValues(values, o.groupSize)
+    .map((g) => [formatGroupLabel(o.labelPrefix, g)].concat(g.values).join('\n'))
+    .join('\n\n');
+}
+
+// HTML for Word paste: numbers in Consolas; with grouping, a bold label per group and <hr> between groups.
+function buildWordHtml(values, opts) {
+  const o = groupOptsOf(opts);
+  const numberP = (v) => '<p style="margin:0;font-family:Consolas,monospace">' + escapeXml(v) + '</p>';
+  if (!o.groupSize) return values.map(numberP).join('');
+  return groupValues(values, o.groupSize)
+    .map((g, gi) => (gi > 0 ? '<hr>' : '') +
+      '<p style="margin:0;font-family:Tahoma"><b>' + escapeXml(formatGroupLabel(o.labelPrefix, g)) + '</b></p>' +
+      g.values.map(numberP).join(''))
+    .join('');
+}
+
+// opts: { groupSize, labelPrefix }. Without a groupSize the output is numbers only.
+function buildDocumentXml(values, opts) {
+  const groupSize = opts && opts.groupSize ? opts.groupSize : null;
+  const prefix = opts && opts.labelPrefix != null ? String(opts.labelPrefix) : 'กลุ่มที่';
+  const paras = [];
+  if (!groupSize) {
+    for (const v of values) paras.push(numberParagraphXml(v));
+  } else {
+    groupValues(values, groupSize).forEach((g, gi) => {
+      if (gi > 0) paras.push(GROUP_SEPARATOR_XML);
+      paras.push(groupLabelParagraphXml(formatGroupLabel(prefix, g)));
+      for (const v of g.values) paras.push(numberParagraphXml(v));
+    });
+  }
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+    '<w:body>' + paras.join('') + '<w:sectPr/></w:body></w:document>';
+}
+
+function buildFileStamp(d) {
+  const p = (n) => String(n).padStart(2, '0');
+  return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes());
+}
+
+// Sticker sheets: A4 self-adhesive paper, one number per cell, cut out by hand. Sizes are millimetres.
+const STICKER_PRESETS = { '45x25': { w: 45, h: 25 }, '45x12': { w: 45, h: 12 } };
+const TWIPS_PER_MM = 56.6929;
+// A4 page and 5 mm margins in twips, matching the sectPr written by buildStickerDocumentXml.
+const STICKER_PAGE_W_TW = 11906;
+const STICKER_PAGE_H_TW = 16838;
+const STICKER_MARGIN_TW = 283;
+// Height of the trailing paragraph after the table; it must fit on the last page too.
+const STICKER_TAIL_TW = 20;
+
+// Floor, not round: a rounded cell could push the grid past the usable page area.
+function stickerCellTwips(mm) {
+  return Math.floor(mm * TWIPS_PER_MM);
+}
+
+// Cells per row and per column on one A4 page, or null when the size is not usable.
+// Counted in twips with the same cell sizes the document uses, so it matches what Word lays out.
+function computeStickerLayout(labelW, labelH) {
+  if (!Number.isFinite(labelW) || !Number.isFinite(labelH)) return null;
+  if (labelW < 10 || labelH < 5) return null;
+  const usableW = STICKER_PAGE_W_TW - 2 * STICKER_MARGIN_TW;
+  const usableH = STICKER_PAGE_H_TW - 2 * STICKER_MARGIN_TW - STICKER_TAIL_TW;
+  const cols = Math.floor(usableW / stickerCellTwips(labelW));
+  const rows = Math.floor(usableH / stickerCellTwips(labelH));
+  if (cols < 1 || rows < 1) return null;
+  return { cols, rows, perPage: cols * rows };
+}
+
+// Arial Bold size (half-points) so that 10 digits fit the cell width and height.
+function stickerFontHalfPoints(labelW, labelH) {
+  const emMm = Math.min((labelW - 3) / 5.6, (labelH - 1.5) / 1.25);
+  const pt = Math.min(emMm / 0.3528, 28);
+  return Math.max(8, Math.floor(pt * 2));
+}
+
+// Word document.xml: one table of equal cells with dashed cut lines. Throws when the size is not usable.
+function buildStickerDocumentXml(values, labelW, labelH) {
+  const layout = computeStickerLayout(labelW, labelH);
+  if (!layout) throw new Error('invalid sticker size');
+  const head = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>';
+  // A tiny paragraph after the table keeps Word from adding a blank page.
+  const tail = '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/>' +
+    '<w:rPr><w:sz w:val="2"/></w:rPr></w:pPr></w:p>' +
+    '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>' +
+    '<w:pgMar w:top="283" w:right="283" w:bottom="283" w:left="283" w:header="0" w:footer="0" w:gutter="0"/>' +
+    '</w:sectPr></w:body></w:document>';
+  if (!values || values.length === 0) return head + tail;
+
+  const cellW = stickerCellTwips(labelW);
+  const cellH = stickerCellTwips(labelH);
+  const hp = stickerFontHalfPoints(labelW, labelH);
+  const cellPPr = '<w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr>';
+  const cellXml = (value) => {
+    const run = value == null ? '' :
+      '<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:b/><w:bCs/>' +
+      '<w:sz w:val="' + hp + '"/><w:szCs w:val="' + hp + '"/></w:rPr>' +
+      '<w:t xml:space="preserve">' + escapeXml(value) + '</w:t></w:r>';
+    return '<w:tc><w:tcPr><w:tcW w:w="' + cellW + '" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>' +
+      '<w:p>' + cellPPr + run + '</w:p></w:tc>';
+  };
+
+  const rowCount = Math.ceil(values.length / layout.cols);
+  const rowsXml = [];
+  for (let r = 0; r < rowCount; r++) {
+    const cells = [];
+    for (let c = 0; c < layout.cols; c++) {
+      const i = r * layout.cols + c;
+      cells.push(cellXml(i < values.length ? values[i] : null));
+    }
+    rowsXml.push('<w:tr><w:trPr><w:cantSplit/><w:trHeight w:val="' + cellH + '" w:hRule="exact"/></w:trPr>' +
+      cells.join('') + '</w:tr>');
+  }
+
+  const border = (side) => '<w:' + side + ' w:val="dashed" w:sz="4" w:space="0" w:color="999999"/>';
+  const tblPr = '<w:tblPr><w:tblW w:w="' + (layout.cols * cellW) + '" w:type="dxa"/><w:jc w:val="center"/>' +
+    '<w:tblBorders>' + ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(border).join('') + '</w:tblBorders>' +
+    '<w:tblLayout w:type="fixed"/>' +
+    '<w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="28" w:type="dxa"/>' +
+    '<w:bottom w:w="0" w:type="dxa"/><w:right w:w="28" w:type="dxa"/></w:tblCellMar></w:tblPr>';
+  let grid = '';
+  for (let c = 0; c < layout.cols; c++) grid += '<w:gridCol w:w="' + cellW + '"/>';
+  return head + '<w:tbl>' + tblPr + '<w:tblGrid>' + grid + '</w:tblGrid>' + rowsXml.join('') + '</w:tbl>' + tail;
+}
+
+// Merges OCR candidates from several passes into one list in final reading order.
+// passes: array of arrays of {v, x, y, lh}, each pass in its own reading order.
+// Returns [{value, conflict, alternatives, votes, support}]: votes = passes whose value is the winner,
+// support = distinct passes in the group.
+function mergePasses(passes) {
+  const list = Array.isArray(passes) ? passes : [];
+  const counts = list.map((p) => (p ? p.length : 0));
+  if (counts.every((n) => n === 0)) return [];
+  let primary = 0;
+  for (let p = 1; p < list.length; p++) {
+    if (counts[p] > counts[primary]) primary = p;
+  }
+
+  // Cluster: a candidate joins the nearest group (|dx|/lh + |dy|/lh) that has no item from its pass
+  // and is close enough. Groups are not merged across passes otherwise.
+  const groups = [];
+  list.forEach((pass, passIdx) => {
+    (pass || []).forEach((c, idx) => {
+      let g = null;
+      let bestD = Infinity;
+      for (const grp of groups) {
+        if (grp.passes.has(passIdx)) continue;
+        const lh = Math.max(grp.lh, c.lh);
+        const dy = Math.abs(grp.y - c.y);
+        const dx = Math.abs(grp.x - c.x);
+        if (!(dy < lh * 0.5 && dx < lh * 2.5)) continue;
+        const d = dy / lh + dx / lh;
+        if (d < bestD) {
+          g = grp;
+          bestD = d;
+        }
+      }
+      if (g) {
+        g.items.push({ v: c.v, pass: passIdx });
+        g.passes.add(passIdx);
+        if (passIdx === primary) g.primaryIdx = idx;
+        g.minScore = lowerScore(g.minScore, c.score);
+      } else {
+        groups.push({
+          y: c.y,
+          x: c.x,
+          lh: c.lh,
+          w: c.w,
+          minScore: lowerScore(null, c.score),
+          items: [{ v: c.v, pass: passIdx }],
+          passes: new Set([passIdx]),
+          primaryIdx: passIdx === primary ? idx : null,
+          order: groups.length
+        });
+      }
+    });
+  });
+
+  // Order: primary-pass groups keep their primary index. Other groups go next to the primary group
+  // with the smallest normalized distance: just after it when that group is above, or on the same
+  // line and to the left; otherwise just before it. Ties keep discovery order via the epsilon.
+  const primaryGroups = groups.filter((g) => g.primaryIdx !== null);
+  for (const g of groups) {
+    if (g.primaryIdx !== null) {
+      g.key = g.primaryIdx;
+      continue;
+    }
+    let best = null;
+    let bestD = Infinity;
+    for (const pg of primaryGroups) {
+      const lh = Math.max(pg.lh, g.lh);
+      const d = (Math.abs(g.y - pg.y) + Math.abs(g.x - pg.x)) / lh;
+      if (d < bestD) {
+        best = pg;
+        bestD = d;
+      }
+    }
+    const dy = g.y - best.y; // > 0: the primary group is above
+    const dx = g.x - best.x; // > 0: the primary group is to the left
+    const sameLine = Math.abs(dy) < 0.5 * Math.min(best.lh, g.lh);
+    const after = dy > 0 || (sameLine && dx > 0);
+    g.key = best.primaryIdx + (after ? 0.5 : -0.5) + 1e-6 * g.order;
+  }
+
+  // Vote: most frequent value; on a tie, the value seen in the lowest-index pass.
+  const merged = groups.map((g) => {
+    const tally = new Map();
+    for (const it of g.items) {
+      const t = tally.get(it.v);
+      if (t) t.count++;
+      else tally.set(it.v, { count: 1, firstPass: it.pass });
+    }
+    let value = null;
+    let best = null;
+    for (const [v, t] of tally) {
+      if (!best || t.count > best.count || (t.count === best.count && t.firstPass < best.firstPass)) {
+        best = t;
+        value = v;
+      }
+    }
+    const alternatives = [...tally.keys()].filter((v) => v !== value);
+    return {
+      value, conflict: alternatives.length > 0, alternatives,
+      votes: best.count, support: g.passes.size,
+      y: g.y, x: g.x, lh: g.lh, w: g.w, minScore: g.minScore, key: g.key, order: g.order
+    };
+  });
+
+  merged.sort((a, b) => (a.key - b.key) || (a.order - b.order));
+  return merged.map(({ value, conflict, alternatives, votes, support, y, x, lh, w, minScore }) =>
+    ({ value, conflict, alternatives, votes, support, y, x, lh, w, minScore }));
+}
+
+// Like withTimeout, but the deadline is an inactivity limit. work(touch) runs; each touch() re-arms the deadline,
+// so the promise rejects with Error(message) only after ms with no touch. The timer is cleared once it settles.
+function withInactivityTimeout(work, ms, message) {
+  let timer = null;
+  let done = false;
+  let rejectDeadline;
+  const deadline = new Promise((_, reject) => { rejectDeadline = reject; });
+  const arm = () => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => rejectDeadline(new Error(message)), ms);
+  };
+  const touch = () => {
+    if (!done) arm();
+  };
+  arm();
+  const workP = new Promise((resolve) => resolve(work(touch)));
+  return Promise.race([workP, deadline]).finally(() => {
+    done = true;
+    clearTimeout(timer);
+  });
+}
+
+// Lowest numeric score of a and b; null when neither is a number.
+function lowerScore(a, b) {
+  if (typeof b !== 'number') return a;
+  return typeof a === 'number' ? Math.min(a, b) : b;
+}
+
+// Re-orders merged entries ({y, x, lh}) into rows: top to bottom, then left to right inside a row.
+// Two entries share a row when |dy| < 0.5 * min(lh). Input order is only the tie-break for equal y.
+function sortByRows(entries) {
+  const list = Array.isArray(entries) ? entries.slice() : [];
+  list.sort((a, b) => (a.y - b.y) || (a.x - b.x));
+  const rows = [];
+  for (const e of list) {
+    const row = rows.find((r) => Math.abs(e.y - r.y) < 0.5 * Math.min(e.lh, r.lh));
+    if (row) row.items.push(e);
+    else rows.push({ y: e.y, lh: e.lh, items: [e] });
+  }
+  return rows.flatMap((r) => r.items.sort((a, b) => a.x - b.x));
+}
+
+// Re-orders merged entries ({x, y, w, lh}) into columns: columns left to right (by mean x), top to bottom inside
+// a column. Two entries share a column when their x-ranges overlap by more than half the narrower width.
+function sortByColumns(entries) {
+  const list = Array.isArray(entries) ? entries.slice() : [];
+  list.sort((a, b) => (a.x - b.x) || (a.y - b.y));
+  const cols = [];
+  for (const e of list) {
+    const col = cols.find((c) => c.items.some((o) => xOverlap(e, o) > 0.5 * Math.min(e.w, o.w)));
+    if (col) col.items.push(e);
+    else cols.push({ items: [e] });
+  }
+  const meanX = (c) => c.items.reduce((s, e) => s + e.x, 0) / c.items.length;
+  cols.sort((a, b) => meanX(a) - meanX(b));
+  return cols.flatMap((c) => c.items.sort((a, b) => (a.y - b.y) || (a.x - b.x)));
+}
+
+function xOverlap(a, b) {
+  return Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+}
+
+// PaddleOCR recognizer keys: one per line of the dictionary file, then ' ' for the space class.
+// Class 0 is the CTC blank, so key j-1 is class j.
+function buildRecKeys(text) {
+  const keys = String(text == null ? '' : text).split(/\r?\n/);
+  if (keys[keys.length - 1] === '') keys.pop();
+  keys.push(' ');
+  return keys;
+}
+
+// Greedy CTC decode of recognizer output (T frames x C classes, row-major in `data`).
+// Returns the text, its score (the mean max probability over the emitted characters) and
+// charScores: the max probability of each emitted character, aligned with text (charScores[i] is text[i]).
+function ctcDecode(data, T, C, keys) {
+  let text = '';
+  const charScores = [];
+  let last = -1;
+  let total = 0;
+  let cnt = 0;
+  for (let i = 0; i < T; i++) {
+    let best = 0;
+    let bv = -Infinity;
+    for (let j = 0; j < C; j++) {
+      const v = data[i * C + j];
+      if (v > bv) { bv = v; best = j; }
+    }
+    if (best !== 0 && best !== last) {
+      const ch = keys[best - 1] || '';
+      text += ch;
+      for (let k = 0; k < ch.length; k++) charScores.push(bv);
+      total += bv;
+      cnt++;
+    }
+    last = best;
+  }
+  return { text, score: cnt ? total / cnt : 0, charScores };
+}
+
+// Text detection (PP-OCRv4 det): pixels above DET_THRESHOLD form 4-neighbour components. A component is kept
+// when its smaller side is at least DET_MIN_SIDE pixels and its mean probability is at least DET_MIN_SCORE.
+const DET_THRESHOLD = 0.3;
+const DET_MIN_SIDE = 3;
+const DET_MIN_SCORE = 0.6;
+
+// prob: detector map, w x h, row-major. Returns [{x0, y0, x1, y1, score}] with inclusive pixel bounds.
+function detectComponents(prob, w, h) {
+  const n = w * h;
+  const seen = new Uint8Array(n);
+  const out = [];
+  const stack = [];
+  for (let i = 0; i < n; i++) {
+    if (!(prob[i] > DET_THRESHOLD) || seen[i]) continue;
+    let x0 = w, y0 = h, x1 = 0, y1 = 0, cnt = 0, sum = 0;
+    seen[i] = 1;
+    stack.push(i);
+    while (stack.length) {
+      const p = stack.pop();
+      const x = p % w;
+      const y = (p / w) | 0;
+      cnt++;
+      sum += prob[p];
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+      const nb = [p - 1, p + 1, p - w, p + w];
+      for (let k = 0; k < 4; k++) {
+        const q = nb[k];
+        if (q < 0 || q >= n) continue;
+        if ((k === 0 && x === 0) || (k === 1 && x === w - 1)) continue;
+        if (prob[q] > DET_THRESHOLD && !seen[q]) {
+          seen[q] = 1;
+          stack.push(q);
+        }
+      }
+    }
+    const bw = x1 - x0 + 1;
+    const bh = y1 - y0 + 1;
+    if (Math.min(bw, bh) < DET_MIN_SIDE || sum / cnt < DET_MIN_SCORE) continue;
+    out.push({ x0, y0, x1, y1, score: sum / cnt });
+  }
+  return out;
+}
+
+// Recognizer input: height 48, width from the box's aspect ratio, kept within [16, 1600].
+const REC_HEIGHT = 48;
+function recInputWidth(bw, bh) {
+  return Math.max(16, Math.min(1600, Math.ceil((REC_HEIGHT * bw) / bh)));
+}
+
+// PaddleOCR results [{text, score, charScores, box: {x0, y0, x1, y1}}] -> the pass shape the rest of the app reads.
+// The whole box is the single word of its line. charScores (per character of text) go on the line and its word.
+// Empty texts are skipped.
+function passFromPaddle(items) {
+  const lines = [];
+  for (const it of Array.isArray(items) ? items : []) {
+    if (!it || !it.text) continue;
+    const bbox = { x0: it.box.x0, y0: it.box.y0, x1: it.box.x1, y1: it.box.y1 };
+    const charScores = Array.isArray(it.charScores) ? it.charScores.slice() : undefined;
+    lines.push({
+      text: it.text,
+      bbox,
+      words: [{ text: it.text, bbox: { ...bbox }, charScores: charScores && charScores.slice() }],
+      score: it.score,
+      charScores
+    });
+  }
+  return { scale: 1, text: lines.map((l) => l.text).join('\n'), lines };
+}
+
+// Candidates for one pass: each exact 10-digit value with its position and width in original-image units.
+// x and w cover the words that hold the value's digits (for a PaddleOCR line, the whole box).
+// score is the lowest recognizer score among the characters that make up the value's digits (the
+// per-character charScores of the words holding them). It falls back to the line score when that mapping fails.
+function collectCandidates(lines, fixConfusions, scale) {
+  const cands = [];
+  const digitsOf = (t) => (fixConfusions ? fixConfusionsInLine(t || '') : (t || '')).replace(/\D/g, '');
+  // Index in text of each digit that digitsOf keeps, in order (fixConfusionsInLine keeps the length).
+  const digitIndexesOf = (t) => {
+    const fixed = fixConfusions ? fixConfusionsInLine(t || '') : (t || '');
+    const idx = [];
+    for (let i = 0; i < fixed.length; i++) if (/\d/.test(fixed[i])) idx.push(i);
+    return idx;
+  };
+  for (const line of lines) {
+    const exact = extractNumbers(line.text, fixConfusions).exact;
+    if (exact.length === 0) continue;
+    const b = line.bbox || { x0: 0, y0: 0, x1: 0, y1: 0 };
+    const lh = Math.max(1, (b.y1 - b.y0) / scale);
+    const y = (b.y0 + b.y1) / 2 / scale;
+    // The line's digit stream, built word by word, with each word's span in that stream.
+    const spans = [];
+    let stream = '';
+    for (const word of line.words) {
+      const d = digitsOf(word.text);
+      spans.push({
+        start: stream.length,
+        end: stream.length + d.length,
+        bbox: word.bbox,
+        charScores: word.charScores,
+        digitIdx: digitIndexesOf(word.text)
+      });
+      stream += d;
+    }
+    // Lowest score of the stream digits [pos, pos + len), or null when a word lacks a score for one of them.
+    const minDigitScore = (pos, len) => {
+      let min = Infinity;
+      for (const s of spans) {
+        if (!(s.start < pos + len && s.end > pos)) continue;
+        if (!Array.isArray(s.charScores) || s.digitIdx.length !== s.end - s.start) return null;
+        for (let p = Math.max(s.start, pos); p < Math.min(s.end, pos + len); p++) {
+          const v = s.charScores[s.digitIdx[p - s.start]];
+          if (typeof v !== 'number' || Number.isNaN(v)) return null;
+          if (v < min) min = v;
+        }
+      }
+      return min === Infinity ? null : min;
+    };
+    const seen = new Map();
+    for (const v of exact) {
+      // The k-th time a value appears on this line, use its k-th occurrence in the stream.
+      const k = seen.get(v) || 0;
+      seen.set(v, k + 1);
+      let pos = -1;
+      let from = 0;
+      for (let n = 0; n <= k; n++) {
+        pos = stream.indexOf(v, from);
+        if (pos < 0) break;
+        from = pos + 1;
+      }
+      const covering = pos >= 0
+        ? spans.filter((s) => s.bbox && s.start < pos + v.length && s.end > pos)
+        : [];
+      const box = covering.length
+        ? {
+          x0: Math.min(...covering.map((s) => s.bbox.x0)),
+          x1: Math.max(...covering.map((s) => s.bbox.x1))
+        }
+        : b;
+      const charMin = pos >= 0 ? minDigitScore(pos, v.length) : null;
+      const score = charMin === null ? line.score : charMin;
+      cands.push({ v, x: box.x0 / scale, w: (box.x1 - box.x0) / scale, y, lh, score });
+    }
+  }
+  return cands;
+}
+
+// Recognizer score below which an accepted value is flagged for a check (no alternatives are shown for it).
+const LOW_CONFIDENCE_SCORE = 0.9;
+
+function isLowConfidence(m) {
+  return typeof m.minScore === 'number' && m.minScore < LOW_CONFIDENCE_SCORE;
+}
+
+// passes: [{scale, text, lines}], base pass first. order: 'rows' (default, sortByRows) or 'columns' (sortByColumns).
+// Agreement rule, per merged candidate:
+//   votes >= 2                      -> accepted (flagged when other values were seen)
+//   votes 1 and support >= 2        -> accepted and flagged (its alternatives are the other values)
+//   support 1 (one pass saw it)     -> not accepted; goes to near, unless the image has a single pass
+// Returns the accepted values, the alternatives per value, lowConf per value (source score below
+// LOW_CONFIDENCE_SCORE; such a value has no alternatives), the near misses (base-pass runs and
+// single-pass values), and nearSingle: the near values that came from the agreement rule.
+function buildImageResult(passes, fixConfusions, order) {
+  const list = Array.isArray(passes) ? passes : [];
+  if (list.length === 0) return { exact: [], alts: [], lowConf: [], near: [], nearSingle: [] };
+  const merged = mergePasses(list.map((p) => collectCandidates(p.lines, fixConfusions, p.scale)));
+  const singlePassAllowed = list.length === 1;
+  const accepted = [];
+  const singles = [];
+  for (const m of merged) {
+    if (m.votes >= 2 || m.support >= 2 || singlePassAllowed) accepted.push(m);
+    else singles.push(m.value);
+  }
+  const ordered = order === 'columns' ? sortByColumns(accepted) : sortByRows(accepted);
+  const exact = ordered.map((m) => m.value);
+  const lowConf = ordered.map((m) => isLowConfidence(m));
+  const alts = ordered.map((m, k) => (lowConf[k] ? [] : m.alternatives));
+
+  const baseNear = [];
+  for (const line of list[0].lines) {
+    baseNear.push(...extractNumbers(line.text, fixConfusions).nearMiss);
+  }
+  const near = baseNear.filter((n) => !exact.some((e) => e.includes(n) || n.includes(e)));
+  const nearSingle = [];
+  for (const v of singles) {
+    if (exact.includes(v) || near.includes(v) || nearSingle.includes(v)) continue;
+    nearSingle.push(v);
+    near.push(v);
+  }
+  return { exact, alts, lowConf, near, nearSingle };
+}
+
+// Rejects with Error(message) if the promise does not settle within ms. The deadline timer is cleared once it settles.
+function withTimeout(promise, ms, message) {
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
+}
+
+// Image types by content. A match needs every byte in range, so short input never matches.
+const HEIC_BRANDS = ['heic', 'heix', 'mif1', 'msf1', 'hevc'];
+const asciiBytes = (s) => Array.from(s, (c) => c.charCodeAt(0));
+function bytesMatchAt(bytes, offset, expected) {
+  if (!bytes || bytes.length < offset + expected.length) return false;
+  return expected.every((b, i) => bytes[offset + i] === b);
+}
+
+// Decides the image type from the first bytes of a file (a Uint8Array of up to 12 bytes).
+// Returns 'jpeg', 'png', 'webp', 'heic', or null. The file name and MIME type are not used.
+function sniffImageType(bytes) {
+  if (bytesMatchAt(bytes, 0, [0xFF, 0xD8, 0xFF])) return 'jpeg';
+  if (bytesMatchAt(bytes, 0, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])) return 'png';
+  if (bytesMatchAt(bytes, 0, asciiBytes('RIFF')) && bytesMatchAt(bytes, 8, asciiBytes('WEBP'))) return 'webp';
+  if (bytesMatchAt(bytes, 4, asciiBytes('ftyp')) &&
+      HEIC_BRANDS.some((brand) => bytesMatchAt(bytes, 8, asciiBytes(brand)))) return 'heic';
+  return null;
+}
+/* @pure-end */
+
+/* ---------- DOM and state ---------- */
+
+const MIME_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+const PRESET_COUNTS = { '10': 10, '50': 50, '100': 100 };
+const GROUP_PRESETS = { '5': 5, '10': 10 };
+const STATUS_TEXT = { wait: 'รอ', reading: 'กำลังอ่าน', error: 'ผิดพลาด' };
+
+const $ = (sel) => document.querySelector(sel);
+const els = {
+  dropzone: $('#dropzone'),
+  fileInput: $('#file-input'),
+  pickBtn: $('#pick-btn'),
+  uploadError: $('#upload-error'),
+  imageSection: $('#image-section'),
+  imageCount: $('#image-count'),
+  imageGrid: $('#image-grid'),
+  clearImagesBtn: $('#clear-images-btn'),
+  customWrap: $('#custom-wrap'),
+  customQty: $('#custom-qty'),
+  fixCheck: $('#fix-confusions'),
+  groupCustomWrap: $('#group-custom-wrap'),
+  groupCustom: $('#group-custom'),
+  groupLabel: $('#group-label'),
+  groupPreview: $('#group-preview'),
+  stickerCustomWrap: $('#sticker-custom-wrap'),
+  stickerW: $('#sticker-w'),
+  stickerH: $('#sticker-h'),
+  stickerPreview: $('#sticker-preview'),
+  runBtn: $('#run-btn'),
+  stopBtn: $('#stop-ocr'),
+  rerunAllBtn: $('#rerun-all-btn'),
+  progress: $('#progress'),
+  progressText: $('#progress-text'),
+  alert: $('#alert'),
+  counters: $('#counters'),
+  resultMsg: $('#result-msg'),
+  selectToggle: $('#select-toggle'),
+  copySelected: $('#copy-selected'),
+  copyAll: $('#copy-all'),
+  copyWord: $('#copy-word'),
+  downloadDocx: $('#download-docx'),
+  addRow: $('#add-row'),
+  clearResults: $('#clear-results'),
+  rows: $('#rows'),
+  empty: $('#empty'),
+  nearList: $('#near-list'),
+  nearEmpty: $('#near-empty'),
+  rawList: $('#raw-list'),
+  toast: $('#toast')
+};
+
+const state = {
+  // {id, file, url, status: 'wait' | 'reading' | 'done' | 'error', error, rawText, exact: [], near: [],
+  //  passes: [{scale, text, lines}] (base first), alts: [[alternative values per exact value]],
+  //  nearSingle: [near values that came from the single-pass rule, shown with a note]}
+  images: [],
+  // {id, value, checked, source: 'ocr' | 'manual', imageIndex, edited, nearKey, conflict, alternatives}
+  rows: [],
+  orderMode: 'rows',   // 'rows' (by line, left to right) or 'columns' (by column, top to bottom), applied per image
+  ocrDirty: false,     // true when OCR rows were edited, deleted, or checkbox-toggled by hand
+  nextRowId: 1,
+  nextImageId: 1,
+  // Token of the run in progress; bumped on every run start, stop and end, so older results are dropped.
+  runId: 0,
+  // Set by the stop button; the run in progress then ends silently.
+  cancelRequested: false,
+  running: false,
+  // Ids of the images whose raw-OCR <details> is open. Kept here so a rebuild of the list does not collapse them.
+  rawOpenIds: new Set()
+};
+
+/* ---------- small helpers ---------- */
+
+// Native <dialog> when available, otherwise a plain fixed overlay. Resolves true for OK, false otherwise.
+function confirmDialog(message, opts) {
+  const o = opts || {};
+  return new Promise((resolve) => {
+    const prevFocus = document.activeElement;
+    const useDialog = typeof HTMLDialogElement === 'function' &&
+      typeof HTMLDialogElement.prototype.showModal === 'function';
+
+    const box = document.createElement('div');
+    box.className = 'confirm-box';
+    const msg = document.createElement('p');
+    msg.id = 'confirm-msg';
+    msg.textContent = message;
+    const actions = document.createElement('div');
+    actions.className = 'confirm-actions';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'btn';
+    cancelBtn.textContent = o.cancelText || 'ยกเลิก';
+    const okBtn = document.createElement('button');
+    okBtn.type = 'button';
+    okBtn.className = 'btn btn-ok' + (o.danger ? ' danger' : '');
+    okBtn.textContent = o.okText || 'ตกลง';
+    actions.append(cancelBtn, okBtn);
+    box.append(msg, actions);
+
+    const root = useDialog ? document.createElement('dialog') : document.createElement('div');
+    root.className = useDialog ? 'confirm-dialog' : 'confirm-overlay';
+    root.setAttribute('role', 'alertdialog');
+    root.setAttribute('aria-modal', 'true');
+    root.setAttribute('aria-labelledby', 'confirm-msg');
+    root.appendChild(box);
+
+    let settled = false;
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    };
+    function finish(value) {
+      if (settled) return;
+      settled = true;
+      if (!useDialog) document.removeEventListener('keydown', onKey, true);
+      if (useDialog && root.open) root.close();
+      root.remove();
+      if (prevFocus && typeof prevFocus.focus === 'function' && document.contains(prevFocus)) prevFocus.focus();
+      resolve(value);
+    }
+    cancelBtn.addEventListener('click', () => finish(false));
+    okBtn.addEventListener('click', () => finish(true));
+    // A click on the backdrop lands on the root itself, not on the box inside it.
+    root.addEventListener('click', (e) => { if (e.target === root) finish(false); });
+
+    if (useDialog) {
+      root.addEventListener('cancel', (e) => { e.preventDefault(); finish(false); });
+      document.body.appendChild(root);
+      root.showModal();
+    } else {
+      document.addEventListener('keydown', onKey, true);
+      document.body.appendChild(root);
+    }
+    // A danger confirm starts on Cancel, so a stray Enter does not confirm the destructive action.
+    (o.danger ? cancelBtn : okBtn).focus();
+  });
+}
+
+function setAlert(type, message) {
+  if (!message) {
+    els.alert.hidden = true;
+    els.alert.textContent = '';
+    return;
+  }
+  els.alert.className = 'alert ' + type;
+  els.alert.textContent = message;
+  els.alert.hidden = false;
+}
+
+function showUploadError(message) {
+  els.uploadError.textContent = message || '';
+  els.uploadError.hidden = !message;
+}
+
+function showProgress(label, ratio) {
+  const r = Math.min(1, Math.max(0, ratio));
+  els.progress.hidden = false;
+  els.progress.value = r;
+  els.progressText.hidden = false;
+  els.progressText.textContent = label;
+}
+
+function hideProgress() {
+  els.progress.hidden = true;
+  els.progressText.hidden = true;
+}
+
+let toastTimer = null;
+function toast(message) {
+  els.toast.textContent = message;
+  els.toast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { els.toast.hidden = true; }, toastDurationMs(message));
+}
+
+function formatBytes(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  return (n / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function describeError(err) {
+  return err && err.message ? err.message : String(err);
+}
+
+function statusText(img) {
+  if (img.status === 'done') return 'เสร็จ (' + img.exact.length + ' ชุด)';
+  return STATUS_TEXT[img.status] || img.status;
+}
+
+function doneImages() {
+  return state.images.filter((img) => img.status === 'done');
+}
+
+function hasResult() {
+  return state.images.some((img) => img.status === 'done');
+}
+
+function detectedCount() {
+  return doneImages().reduce((s, img) => s + img.exact.length, 0);
+}
+
+function markEdited(row) {
+  if (row.source === 'ocr') {
+    row.edited = true;
+    state.ocrDirty = true;
+  }
+}
+
+/* ---------- images ---------- */
+
+// Reads a small blob as an ArrayBuffer through FileReader. Used where Blob.prototype.arrayBuffer is missing.
+function readBlobAsArrayBuffer(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('FileReader failed'));
+    reader.readAsArrayBuffer(blob);
+  });
+}
+
+// Reads the first 12 bytes of a file and sniffs its type. A file that cannot be read counts as unknown.
+async function sniffFile(file) {
+  try {
+    const head = file.slice(0, 12);
+    const bytes = typeof Blob.prototype.arrayBuffer === 'function'
+      ? await head.arrayBuffer()
+      : await readBlobAsArrayBuffer(head);
+    return sniffImageType(new Uint8Array(bytes));
+  } catch (err) {
+    return null;
+  }
+}
+
+// Calls to acceptFiles run one after another, so concurrent drops and pastes keep a deterministic order.
+// A failed call is logged and does not stop the calls queued after it.
+let acceptQueue = Promise.resolve();
+function enqueueAccept(files) {
+  acceptQueue = acceptQueue.then(() => acceptFiles(files)).catch((err) => {
+    console.error('[OCR] acceptFiles:', err);
+    showUploadError('เพิ่มรูปไม่สำเร็จ กรุณาลองใหม่');
+    render();
+  });
+  return acceptQueue;
+}
+
+// Appends the images in order. Types are decided by content, so a JPEG named .jfif, one with no
+// extension, or one with an empty MIME type is accepted. HEIC and other files are skipped with a toast.
+async function acceptFiles(files) {
+  if (state.running) {
+    toast('กำลังประมวลผล กรุณารอสักครู่');
+    return;
+  }
+  const heic = [];
+  const skipped = [];
+  let added = 0;
+  let blockedByRun = false;
+  for (const file of files) {
+    const name = file.name || 'ไม่ทราบชื่อไฟล์';
+    // A run may have started while this file was being sniffed. Then nothing more is added.
+    const kind = await sniffFile(file);
+    if (state.running) {
+      blockedByRun = true;
+      break;
+    }
+    if (kind === 'heic') {
+      heic.push(name);
+      continue;
+    }
+    if (!kind) {
+      skipped.push(name);
+      continue;
+    }
+    state.images.push({
+      id: state.nextImageId++,
+      file,
+      url: URL.createObjectURL(file),
+      status: 'wait',
+      error: '',
+      rawText: '',
+      exact: [],
+      near: [],
+      nearSingle: [],
+      passes: [],
+      alts: [],
+      lowConf: []
+    });
+    added++;
+  }
+  if (added > 0) showUploadError('');
+  // One toast for everything that was not added, so no notice hides another.
+  const notices = [];
+  if (blockedByRun) notices.push('กำลังประมวลผล กรุณารอสักครู่ · ไฟล์ที่เหลือยังไม่ถูกเพิ่ม');
+  if (heic.length > 0) {
+    notices.push('ไฟล์ HEIC ยังไม่รองรับ: ' + heic.join(', ') + ' — กรุณาแปลงเป็น JPG หรือส่งรูปผ่านแอปที่แปลงให้อัตโนมัติ');
+  }
+  if (skipped.length > 0) {
+    notices.push('ข้ามไฟล์ที่ไม่รองรับ: ' + skipped.join(', '));
+  }
+  if (notices.length > 0) toast(notices.join(' · '));
+  if (added > 0) render();
+}
+
+async function removeImage(img) {
+  if (state.running) {
+    toast('กำลังประมวลผล กรุณารอสักครู่');
+    return;
+  }
+  const i = state.images.indexOf(img);
+  if (i < 0) return;
+  const hasEdits = state.rows.some((r) => r.source === 'ocr' && r.imageIndex === i && r.edited);
+  if (hasEdits) {
+    const ok = await confirmDialog(
+      'รูปที่ ' + (i + 1) + ' มีรายการที่แก้ไขไว้ การลบรูปจะลบรายการของรูปนี้ด้วย ต้องการดำเนินการต่อหรือไม่?',
+      { okText: 'ลบรูป', danger: true }
+    );
+    if (!ok) return;
+  }
+  const j = state.images.indexOf(img); // the list may have changed while the dialog was open
+  if (j < 0 || state.running) return;
+  URL.revokeObjectURL(img.url);
+  state.images.splice(j, 1);
+  state.rows = state.rows.filter((r) => !(r.source === 'ocr' && r.imageIndex === j));
+  for (const r of state.rows) {
+    if (r.source === 'ocr' && r.imageIndex > j) r.imageIndex -= 1;
+  }
+  if (state.images.length === 0) showUploadError('');
+  if (!state.rows.some((r) => r.source === 'ocr')) state.ocrDirty = false;
+  // The checked flags stay as they are: the quantity rule is not re-run for a removal.
+  orderRows();
+  render();
+}
+
+async function clearAllImages() {
+  if (state.running) {
+    toast('กำลังประมวลผล กรุณารอสักครู่');
+    return;
+  }
+  if (state.images.length === 0) return;
+  const ok = await confirmDialog(
+    'ลบรูปทั้งหมดใช่หรือไม่? รายการที่อ่านจากรูปเหล่านี้จะถูกลบด้วย (รายการที่เพิ่มเองจะยังอยู่)',
+    { okText: 'ลบทั้งหมด', danger: true }
+  );
+  if (!ok || state.running) return;
+  state.images.forEach((img) => URL.revokeObjectURL(img.url));
+  state.images = [];
+  state.rows = state.rows.filter((r) => r.source !== 'ocr');
+  state.ocrDirty = false;
+  showUploadError('');
+  setAlert('', '');
+  applySelection();
+  render();
+}
+
+function moveImage(img, delta) {
+  if (state.running) {
+    toast('กำลังประมวลผล กรุณารอสักครู่');
+    return;
+  }
+  const i = state.images.indexOf(img);
+  const j = i + delta;
+  if (i < 0 || j < 0 || j >= state.images.length) return;
+  [state.images[i], state.images[j]] = [state.images[j], state.images[i]];
+  for (const r of state.rows) {
+    if (r.source !== 'ocr') continue;
+    if (r.imageIndex === i) r.imageIndex = j;
+    else if (r.imageIndex === j) r.imageIndex = i;
+  }
+  // The checked flags stay as they are: the quantity rule is not re-run for a move.
+  orderRows();
+  render();
+  focusImageMove(img, delta);
+}
+
+// After a move, focus stays on the moved image's button for that direction. When the image is now at that end of
+// the list, the other move button gets the focus instead.
+function focusImageMove(img, delta) {
+  const pick = (dir) => els.imageGrid.querySelector('button[data-image-id="' + img.id + '"][data-move="' + dir + '"]');
+  const same = pick(delta < 0 ? 'up' : 'down');
+  const other = pick(delta < 0 ? 'down' : 'up');
+  const target = same && !same.disabled ? same : other;
+  if (target && !target.disabled) target.focus();
+}
+
+function bindUpload() {
+  els.pickBtn.addEventListener('click', () => els.fileInput.click());
+  els.fileInput.addEventListener('change', (e) => {
+    const files = Array.from((e.target.files) || []);
+    e.target.value = ''; // allows picking the same file again later
+    if (files.length) enqueueAccept(files);
+  });
+
+  const dz = els.dropzone;
+  ['dragenter', 'dragover'].forEach((type) => {
+    dz.addEventListener(type, (e) => {
+      e.preventDefault();
+      dz.classList.add('dragover');
+    });
+  });
+  ['dragleave', 'dragend'].forEach((type) => {
+    dz.addEventListener(type, (e) => {
+      if (!dz.contains(e.relatedTarget)) dz.classList.remove('dragover');
+    });
+  });
+  dz.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dz.classList.remove('dragover');
+    const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+    if (files.length) enqueueAccept(files);
+    else showUploadError('ไม่พบไฟล์ในสิ่งที่ลาก');
+  });
+  // Stop the browser from opening a file dropped outside the zone.
+  window.addEventListener('dragover', (e) => e.preventDefault());
+  window.addEventListener('drop', (e) => e.preventDefault());
+
+  document.addEventListener('paste', (e) => {
+    // Text entry keeps its own paste. Elsewhere (radio chips, checkboxes, the page) an image paste is taken even when
+    // the clipboard also carries text, since screenshot tools often put both on it.
+    if (isTextEntryTarget(e.target)) return;
+    const items = Array.from((e.clipboardData && e.clipboardData.items) || [])
+      .filter((it) => it.kind === 'file' && it.type.startsWith('image/'));
+    if (items.length === 0) return;
+    e.preventDefault();
+    const stamp = buildFileStamp(new Date());
+    const files = [];
+    items.forEach((it, k) => {
+      const blob = it.getAsFile();
+      if (!blob) return;
+      const ext = MIME_EXT[blob.type] || 'img';
+      const suffix = items.length > 1 ? '-' + (k + 1) : '';
+      files.push(new File([blob], 'clipboard-' + stamp + suffix + '.' + ext, { type: blob.type }));
+    });
+    if (files.length) enqueueAccept(files);
+  });
+
+  els.clearImagesBtn.addEventListener('click', clearAllImages);
+}
+
+/* ---------- quantity, grouping and selection ---------- */
+
+// Returns the chosen count, Infinity for "all", or null when the custom value is invalid.
+function getTargetCount() {
+  const checked = document.querySelector('input[name="qty"]:checked');
+  const mode = checked ? checked.value : 'all';
+  if (mode === 'all') return Infinity;
+  if (mode === 'custom') {
+    const v = els.customQty.valueAsNumber;
+    return v >= 1 && v % 1 === 0 ? v : null;
+  }
+  return PRESET_COUNTS[mode];
+}
+
+function applySelection() {
+  applyOcrSelection(state.rows, getTargetCount());
+}
+
+function onQuantityChange() {
+  const checked = document.querySelector('input[name="qty"]:checked');
+  els.customWrap.hidden = !(checked && checked.value === 'custom');
+  applySelection();
+  render();
+}
+
+function getGroupMode() {
+  const checked = document.querySelector('input[name="group"]:checked');
+  return checked ? checked.value : 'none';
+}
+
+// Group size as a count, or null when grouping is off or the custom value is invalid.
+function getGroupSize() {
+  const mode = getGroupMode();
+  if (mode === 'none') return null;
+  if (mode === 'custom') {
+    const v = els.groupCustom.valueAsNumber;
+    return v >= 1 && v % 1 === 0 ? v : null;
+  }
+  return GROUP_PRESETS[mode] || null;
+}
+
+function groupOpts() {
+  return {
+    groupSize: getGroupSize(),
+    labelPrefix: els.groupLabel.value.trim() || 'กลุ่มที่'
+  };
+}
+
+function updateGroupPreview() {
+  const mode = getGroupMode();
+  const size = getGroupSize();
+  els.groupCustomWrap.hidden = mode !== 'custom';
+  let text;
+  let invalid = false;
+  if (mode === 'none') {
+    text = 'ไม่แบ่งกลุ่ม: ส่งออกตัวเลขต่อเนื่องกัน';
+  } else if (!size) {
+    text = 'กรุณาใส่จำนวนเต็มตั้งแต่ 1 ขึ้นไป (ตอนนี้จะไม่แบ่งกลุ่ม)';
+    invalid = true;
+  } else {
+    text = 'ตัวอย่างหัวกลุ่ม: ' + formatGroupLabel(groupOpts().labelPrefix, { index: 1, start: 1, end: size });
+  }
+  // Only touch the live region when the text changes, so screen readers don't re-announce it on every render.
+  if (els.groupPreview.textContent !== text) els.groupPreview.textContent = text;
+  els.groupPreview.classList.toggle('field-error', invalid);
+}
+
+function onGroupSettingsChange() {
+  updateGroupPreview();
+  renderGroupDividers();
+  updateSummary();
+}
+
+function getStickerMode() {
+  const checked = document.querySelector('input[name="sticker"]:checked');
+  return checked ? checked.value : '45x25';
+}
+
+// Sticker size in millimetres {w, h}: a preset, or the custom inputs (NaN when empty or not a number).
+function getStickerSize() {
+  const mode = getStickerMode();
+  if (mode === 'custom') return { w: els.stickerW.valueAsNumber, h: els.stickerH.valueAsNumber };
+  return STICKER_PRESETS[mode] || STICKER_PRESETS['45x25'];
+}
+
+// Sheet layout for the chosen size, or null when the size is not usable.
+function currentStickerLayout() {
+  const size = getStickerSize();
+  return computeStickerLayout(size.w, size.h);
+}
+
+function updateStickerPreview() {
+  els.stickerCustomWrap.hidden = getStickerMode() !== 'custom';
+  const layout = currentStickerLayout();
+  let text;
+  if (!layout) {
+    text = 'ขนาดไม่ถูกต้อง: กว้างอย่างน้อย 10 มม. สูงอย่างน้อย 5 มม. และต้องไม่เกินหน้า A4';
+  } else {
+    text = layout.cols + ' คอลัมน์ × ' + layout.rows + ' แถว = ' + layout.perPage + ' ดวงต่อแผ่น A4';
+    const count = selectedValidValues().length;
+    if (count > 0) text += ' · ใช้ ' + Math.floor((count + layout.perPage - 1) / layout.perPage) + ' แผ่น';
+  }
+  // Only touch the live region when the text changes, so screen readers don't re-announce it on every render.
+  if (els.stickerPreview.textContent !== text) els.stickerPreview.textContent = text;
+  els.stickerPreview.classList.toggle('field-error', !layout);
+}
+
+function onStickerSettingsChange() {
+  updateStickerPreview();
+  updateSummary();
+}
+
+function isRowValid(row) {
+  return isValidSet(row.value);
+}
+
+function selectedValidValues() {
+  return state.rows.filter((r) => r.checked && isRowValid(r)).map((r) => r.value);
+}
+
+function allValidValues() {
+  return state.rows.filter(isRowValid).map((r) => r.value);
+}
+
+// Keeps OCR rows in image order (reading order within an image is kept by stable sort); manual rows last.
+function orderRows() {
+  const key = (r) => (r.source === 'ocr' ? r.imageIndex : Infinity);
+  state.rows.sort((a, b) => {
+    const ka = key(a);
+    const kb = key(b);
+    return ka === kb ? 0 : (ka < kb ? -1 : 1);
+  });
+}
+
+// Adds the OCR rows of one image (unchecked) and returns them.
+function addOcrRows(index) {
+  const img = state.images[index];
+  const added = [];
+  img.exact.forEach((value, k) => {
+    const alternatives = (img.alts && img.alts[k]) || [];
+    const lowConfidence = !!(img.lowConf && img.lowConf[k]);
+    const row = {
+      id: state.nextRowId++, value, checked: false, source: 'ocr', imageIndex: index, edited: false,
+      conflict: alternatives.length > 0 || lowConfidence, alternatives: alternatives.slice(), lowConfidence
+    };
+    state.rows.push(row);
+    added.push(row);
+  });
+  return added;
+}
+
+// Builds the image's numbers from its stored OCR passes and adds its OCR rows.
+function finishImage(img) {
+  const res = buildImageResult(img.passes, els.fixCheck.checked, state.orderMode);
+  img.rawText = img.passes.length ? img.passes[0].text : '';
+  img.exact = res.exact;
+  img.alts = res.alts;
+  img.lowConf = res.lowConf;
+  img.near = res.near;
+  img.nearSingle = res.nearSingle;
+  img.status = 'done';
+  img.error = '';
+  const added = addOcrRows(state.images.indexOf(img));
+  orderRows();
+  // Only the new rows take the quantity rule; rows that were already there keep their flags.
+  applySelectionToNewRows(state.rows, added, getTargetCount());
+}
+
+/* ---------- OCR ---------- */
+
+function loadSource(file) {
+  if (typeof createImageBitmap === 'function') {
+    return createImageBitmap(file).catch(() => loadViaImage(file));
+  }
+  return loadViaImage(file);
+}
+
+function loadViaImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('เปิดไฟล์รูปไม่ได้')); };
+    img.src = url;
+  });
+}
+
+/* ---------- OCR engine: PaddleOCR PP-OCRv4 det + rec on onnxruntime-web ---------- */
+
+const PADDLE_DIR = 'vendor/paddle/';
+const DET_LIMIT_SIDE = 960;
+const DET_MEAN = [0.485, 0.456, 0.406];
+const DET_STD = [0.229, 0.224, 0.225];
+const REC_MEAN = [0.5, 0.5, 0.5];
+const REC_STD = [0.5, 0.5, 0.5];
+const UNCLIP_RATIO = 1.5;
+const MODEL_LOAD_ERROR = 'โหลดโมเดล OCR ไม่สำเร็จ กรุณารีเฟรชหน้าแล้วลองใหม่ (ต้องเปิดผ่านเว็บไซต์ ไม่ใช่เปิดไฟล์จากเครื่องโดยตรง)';
+const MODEL_LOADING_TEXT = 'กำลังโหลดโมเดล OCR (ครั้งแรกประมาณ 27 MB)';
+// Deadlines: a load that takes longer than its limit counts as failed. An image has an inactivity limit: it fails
+// only after IMAGE_TIMEOUT_MS without progress (each finished box re-arms it), so a run cannot hang.
+const ENGINE_TIMEOUT_MS = 180000;
+const ENGINE_TIMEOUT_TEXT = 'โหลดโมเดล OCR นานเกินไป กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่';
+const IMAGE_TIMEOUT_MS = 120000;
+const IMAGE_TIMEOUT_TEXT = 'อ่านรูปนี้นานเกินไป';
+// Thrown inside the OCR steps when their run was stopped; startReading treats it as a silent stop.
+class CancelledError extends Error {
+  constructor() {
+    super('cancelled');
+    this.name = 'CancelledError';
+  }
+}
+// Yields one task so the progress update can paint between heavy inference runs.
+// Not requestAnimationFrame: it never fires in a hidden tab, which would stall reading.
+// A hidden tab cannot paint, so it only needs a yield. Background tabs clamp setTimeout to 1 s, but not a
+// MessageChannel message, so the hidden branch yields through one.
+function yieldMessage() {
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = () => {
+      channel.port1.close();
+      resolve();
+    };
+    channel.port2.postMessage(null);
+  });
+}
+const nextFrame = () => document.visibilityState === 'visible' ? new Promise((r) => setTimeout(r, 0)) : yieldMessage();
+
+let enginePromise = null;
+// Set once getEngine has resolved; until then a run shows the model-loading text.
+let engineReady = false;
+
+// Loads both sessions and the keys once. A failed load is not kept, so the next run tries again.
+// A load that runs past ENGINE_TIMEOUT_MS counts as failed. If any part fails, the sessions that did load are
+// released before the error is rethrown.
+function getEngine() {
+  if (!enginePromise) {
+    const loadP = (async () => {
+      const base = new URL(PADDLE_DIR, location.href).href;
+      ort.env.wasm.wasmPaths = base;
+      ort.env.wasm.numThreads = 1;
+      const opts = { executionProviders: ['wasm'] };
+      const detP = ort.InferenceSession.create(base + 'ch_PP-OCRv4_det_infer.onnx', opts);
+      const recP = ort.InferenceSession.create(base + 'ch_PP-OCRv4_rec_infer.onnx', opts);
+      const keysP = fetch(base + 'ppocr_keys_v1.txt').then((r) => {
+        if (!r.ok) throw new Error('ppocr_keys_v1.txt: HTTP ' + r.status);
+        return r.text();
+      });
+      try {
+        const [det, rec, keysText] = await Promise.all([detP, recP, keysP]);
+        return { det, rec, keys: buildRecKeys(keysText) };
+      } catch (err) {
+        // Wait for the other session loads to settle, so a session that finishes later is not leaked.
+        const settled = await Promise.allSettled([detP, recP]);
+        for (const s of settled) {
+          if (s.status === 'fulfilled') s.value.release?.();
+        }
+        throw err;
+      }
+    })();
+    enginePromise = withTimeout(loadP, ENGINE_TIMEOUT_MS, ENGINE_TIMEOUT_TEXT).then((eng) => {
+      engineReady = true;
+      return eng;
+    }, (err) => {
+      enginePromise = null;
+      // A load that finishes after the deadline is released, so its sessions are not leaked.
+      loadP.then((eng) => {
+        eng.det.release?.();
+        eng.rec.release?.();
+      }, () => {});
+      throw err;
+    });
+  }
+  return enginePromise;
+}
+
+function srcWidth(src) { return src.naturalWidth || src.width; }
+function srcHeight(src) { return src.naturalHeight || src.height; }
+
+function toCanvas(src, w, h) {
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(src, 0, 0, w, h);
+  return c;
+}
+
+// BGR, channel-first float tensor with mean/std normalisation (the PaddleOCR input layout).
+function tensorFrom(canvas, mean, std) {
+  const w = canvas.width, h = canvas.height;
+  const d = canvas.getContext('2d').getImageData(0, 0, w, h).data;
+  const out = new Float32Array(3 * w * h);
+  for (let i = 0; i < w * h; i++) {
+    const r = d[4 * i] / 255, g = d[4 * i + 1] / 255, b = d[4 * i + 2] / 255;
+    out[i] = (b - mean[0]) / std[0];
+    out[w * h + i] = (g - mean[1]) / std[1];
+    out[2 * w * h + i] = (r - mean[2]) / std[2];
+  }
+  return new ort.Tensor('float32', out, [1, 3, h, w]);
+}
+
+// Detector: the long side is limited to DET_LIMIT_SIDE, both sides rounded to multiples of 32.
+// Returns the text boxes in source pixels, unclipped.
+async function detectBoxes(m, src) {
+  const W0 = srcWidth(src), H0 = srcHeight(src);
+  const r = Math.min(1, DET_LIMIT_SIDE / Math.max(W0, H0));
+  const w = Math.max(32, Math.round((W0 * r) / 32) * 32);
+  const h = Math.max(32, Math.round((H0 * r) / 32) * 32);
+  const canvas = toCanvas(src, w, h);
+  let t;
+  try {
+    t = tensorFrom(canvas, DET_MEAN, DET_STD);
+  } finally {
+    // The tensor holds its own copy of the pixels, so the canvas memory can go now.
+    canvas.width = canvas.height = 0;
+  }
+  const res = await m.det.run({ [m.det.inputNames[0]]: t });
+  const prob = res[m.det.outputNames[0]].data;
+  return detectComponents(prob, w, h).map((c) => {
+    // Unclip: grow the box by area * UNCLIP_RATIO / perimeter (detector pixels), then map to the source.
+    const bw = c.x1 - c.x0 + 1, bh = c.y1 - c.y0 + 1;
+    const dpx = (bw * bh * UNCLIP_RATIO) / (2 * (bw + bh));
+    return {
+      x0: Math.max(0, (c.x0 - dpx) * W0 / w),
+      y0: Math.max(0, (c.y0 - dpx) * H0 / h),
+      x1: Math.min(W0, (c.x1 + 1 + dpx) * W0 / w),
+      y1: Math.min(H0, (c.y1 + 1 + dpx) * H0 / h)
+    };
+  });
+}
+
+// Recognizer: one box, cut from the source, scaled to height 48. Returns {text, score, charScores}.
+async function recognizeBox(m, src, b) {
+  const bw = b.x1 - b.x0, bh = b.y1 - b.y0;
+  const W = recInputWidth(bw, bh);
+  const c = document.createElement('canvas');
+  let input;
+  try {
+    c.width = W;
+    c.height = REC_HEIGHT;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(src, b.x0, b.y0, bw, bh, 0, 0, W, REC_HEIGHT);
+    input = tensorFrom(c, REC_MEAN, REC_STD);
+  } finally {
+    // The tensor holds its own copy of the pixels, so the canvas memory can go now.
+    c.width = c.height = 0;
+  }
+  const res = await m.rec.run({ [m.rec.inputNames[0]]: input });
+  const out = res[m.rec.outputNames[0]];
+  const [, T, C] = out.dims;
+  return ctcDecode(out.data, T, C, m.keys);
+}
+
+// Reads one image. Returns [{text, score, charScores, box: {x0, y0, x1, y1}}] in a rough reading order.
+// hooks.onDetect() runs before detection; hooks.onRecognize(k, m) runs before each of the m boxes (k from 1);
+// hooks.onRecognized(m) runs after the last box. Each progress update is painted (nextFrame) before the next run.
+// hooks.onProgress() runs after detection and after each box finishes; the caller re-arms its inactivity deadline there.
+// hooks.isCancelled() is checked after every await and before every hook; when it returns true, CancelledError is thrown.
+async function paddleRead(source, hooks) {
+  const h = hooks || {};
+  const check = () => {
+    if (h.isCancelled && h.isCancelled()) throw new CancelledError();
+  };
+  check();
+  const m = await getEngine();
+  check();
+  if (h.onDetect) h.onDetect();
+  await nextFrame();
+  check();
+  const boxes = await detectBoxes(m, source);
+  check();
+  if (h.onProgress) h.onProgress();
+  const items = [];
+  for (let k = 0; k < boxes.length; k++) {
+    check();
+    if (h.onRecognize) h.onRecognize(k + 1, boxes.length);
+    await nextFrame();
+    check();
+    const r = await recognizeBox(m, source, boxes[k]);
+    check();
+    if (r.text) items.push({ text: r.text, score: r.score, charScores: r.charScores, box: boxes[k] });
+    if (h.onProgress) h.onProgress();
+  }
+  check();
+  if (h.onRecognized && boxes.length) h.onRecognized(boxes.length);
+  items.sort((a, b) => {
+    const ha = a.box.y1 - a.box.y0, hb = b.box.y1 - b.box.y0;
+    const ca = (a.box.y0 + a.box.y1) / 2, cb = (b.box.y0 + b.box.y1) / 2;
+    return Math.abs(ca - cb) < Math.min(ha, hb) * 0.5 ? a.box.x0 - b.box.x0 : ca - cb;
+  });
+  return items;
+}
+
+// Reads one image in a single PaddleOCR pass. The source is loaded once and released afterwards.
+// isCancelled() is checked along the way; a true result ends the read with CancelledError.
+// onProgress() is called after detection and after each box, so the caller can re-arm its deadline.
+async function readImagePasses(file, pos, total, isCancelled, onProgress) {
+  const cancelled = isCancelled || (() => false);
+  const progress = onProgress || (() => {});
+  const source = await loadSource(file);
+  try {
+    if (cancelled()) throw new CancelledError();
+    const head = 'รูปที่ ' + pos + '/' + total;
+    const items = await paddleRead(source, {
+      isCancelled: cancelled,
+      onProgress: progress,
+      onDetect: () => showProgress(head + ' · กำลังหาตำแหน่งข้อความ', 0),
+      // Box k is about to be read, so k - 1 boxes are done.
+      onRecognize: (k, n) => showProgress(head + ' · กำลังอ่านข้อความ ' + k + '/' + n, (k - 1) / n),
+      onRecognized: (n) => showProgress(head + ' · กำลังอ่านข้อความ ' + n + '/' + n, 1)
+    });
+    return [passFromPaddle(items)];
+  } finally {
+    if (typeof source.close === 'function') source.close();
+  }
+}
+
+// Reads each target image in order. A failed image is marked and skipped; a failed model load stops the run.
+// Every run takes a token (state.runId). A stop or a newer run changes the token, so late results of this run are
+// dropped and its finally leaves the newer state alone.
+async function startReading(targets) {
+  const runId = ++state.runId;
+  state.cancelRequested = false;
+  const stale = () => runId !== state.runId || state.cancelRequested;
+  state.running = true;
+  setAlert('', '');
+  updateControls();
+  let okCount = 0;
+  try {
+    if (!engineReady) showProgress(MODEL_LOADING_TEXT, 0);
+    try {
+      await getEngine();
+    } catch (err) {
+      if (stale()) return;
+      setAlert('error', err.message === ENGINE_TIMEOUT_TEXT ? ENGINE_TIMEOUT_TEXT : MODEL_LOAD_ERROR);
+      return;
+    }
+    for (const img of targets) {
+      if (stale()) return;
+      const pos = state.images.indexOf(img) + 1;
+      if (pos === 0) continue;
+      img.status = 'reading';
+      img.error = '';
+      render();
+      showProgress('รูปที่ ' + pos + '/' + state.images.length + ' · กำลังหาตำแหน่งข้อความ', 0);
+      // job.cancelled stops this image's in-flight work once its deadline has passed.
+      // The deadline is an inactivity limit: every finished box re-arms it (touch).
+      const job = { cancelled: false };
+      try {
+        const passes = await withInactivityTimeout(
+          (touch) => readImagePasses(img.file, pos, state.images.length, () => job.cancelled || stale(), touch),
+          IMAGE_TIMEOUT_MS,
+          IMAGE_TIMEOUT_TEXT
+        );
+        if (stale()) return;
+        img.passes = passes;
+        finishImage(img);
+        okCount++;
+      } catch (err) {
+        if (stale() || err instanceof CancelledError) return;
+        job.cancelled = true;
+        img.status = 'error';
+        img.error = describeError(err);
+      }
+      render();
+    }
+    if (stale()) return;
+    const total = targets.length;
+    setAlert(okCount === total ? 'success' : 'warning', 'อ่านสำเร็จ ' + okCount + '/' + total + ' รูป');
+  } finally {
+    if (runId === state.runId) endRunForUi();
+  }
+}
+
+// Ends the run for the UI: controls come back and the progress bar goes. Bumping the token makes any result still in
+// flight from the ended run be ignored.
+function endRunForUi() {
+  // The stop button is hidden once the run ends. A focus on it moves to the run button first.
+  const stopHadFocus = document.activeElement === els.stopBtn;
+  state.runId++;
+  state.running = false;
+  hideProgress();
+  render();
+  if (stopHadFocus && els.stopBtn.hidden) {
+    (els.runBtn.disabled ? els.rerunAllBtn : els.runBtn).focus();
+  }
+}
+
+// Stop button. The UI goes idle at once; the OCR call already in flight may still finish in the background, but its
+// result is dropped. Images already finished keep their results.
+function stopReading() {
+  if (!state.running) return;
+  state.cancelRequested = true;
+  state.images.forEach((img) => { if (img.status === 'reading') img.status = 'wait'; });
+  endRunForUi();
+  setAlert('info', 'หยุดการอ่านแล้ว');
+}
+
+// Safety net for errors nobody handled. Only while a run is active: the error is logged, the run is ended so the
+// controls come back, and one alert says so. A CancelledError belongs to a stop and is not reported.
+function onUnexpectedError(kind, err) {
+  if (!state.running || err instanceof CancelledError) return;
+  console.error('[OCR] ' + kind + ':', err);
+  // Images left as reading go back to wait, as stopReading does.
+  state.images.forEach((img) => { if (img.status === 'reading') img.status = 'wait'; });
+  endRunForUi();
+  setAlert('warning', 'เกิดข้อผิดพลาดระหว่างอ่านข้อความ ดูรายละเอียดในคอนโซล');
+}
+
+// Reads only images that are not done yet (keeps edits on finished images).
+async function runOcr() {
+  if (state.running) return;
+  const targets = state.images.filter((img) => img.status !== 'done');
+  if (targets.length === 0) {
+    toast('ไม่มีรูปที่ต้องอ่าน');
+    return;
+  }
+  await startReading(targets);
+}
+
+// Re-reads every image; hand edits to OCR rows are discarded after confirmation.
+async function rerunAll() {
+  if (state.running || state.images.length === 0) return;
+  if (typeof ort === 'undefined') {
+    toast(MODEL_LOAD_ERROR);
+    return;
+  }
+  if (state.ocrDirty) {
+    const ok = await confirmDialog('การแก้ไขในรายการจะหายไป ต้องการอ่านใหม่ทั้งหมดหรือไม่?', { okText: 'อ่านใหม่', danger: true });
+    if (!ok || state.running) return;
+  }
+  state.rows = state.rows.filter((r) => r.source !== 'ocr');
+  state.images.forEach((img) => {
+    img.status = 'wait';
+    img.error = '';
+    img.rawText = '';
+    img.exact = [];
+    img.near = [];
+    img.nearSingle = [];
+    img.passes = [];
+    img.alts = [];
+    img.lowConf = [];
+  });
+  state.ocrDirty = false;
+  render();
+  await startReading(state.images.slice());
+}
+
+// Rebuilds every finished image's numbers and OCR rows from its stored passes, using the current settings.
+function rebuildFromPasses() {
+  state.images.forEach((img) => {
+    if (img.status !== 'done') return;
+    const res = buildImageResult(img.passes, els.fixCheck.checked, state.orderMode);
+    img.exact = res.exact;
+    img.alts = res.alts;
+    img.lowConf = res.lowConf;
+    img.near = res.near;
+    img.nearSingle = res.nearSingle;
+  });
+  state.rows = state.rows.filter((r) => r.source !== 'ocr');
+  state.images.forEach((img, i) => { if (img.status === 'done') addOcrRows(i); });
+  state.ocrDirty = false;
+  orderRows();
+  applySelection();
+  render();
+}
+
+// Re-extracts numbers from the stored raw text of every finished image.
+async function onFixConfusionsChange() {
+  if (state.running) {
+    els.fixCheck.checked = !els.fixCheck.checked;
+    toast('กำลังประมวลผล กรุณารอสักครู่');
+    return;
+  }
+  if (!hasResult()) return;
+  if (state.ocrDirty) {
+    const ok = await confirmDialog('การแก้ไขในรายการจะหายไป ต้องการดำเนินการต่อหรือไม่?', { okText: 'ดำเนินการต่อ', danger: true });
+    if (!ok || state.running) {
+      els.fixCheck.checked = !els.fixCheck.checked;
+      return;
+    }
+  }
+  rebuildFromPasses();
+}
+
+function getOrderMode() {
+  const checked = document.querySelector('input[name="order"]:checked');
+  return checked && checked.value === 'columns' ? 'columns' : 'rows';
+}
+
+function setOrderMode(mode) {
+  const radio = document.querySelector('input[name="order"][value="' + mode + '"]');
+  if (radio) radio.checked = true;
+}
+
+// Changes the row order and rebuilds the rows from stored passes. Cancelling restores the radio.
+async function onOrderModeChange() {
+  const next = getOrderMode();
+  if (next === state.orderMode) return;
+  if (state.running) {
+    setOrderMode(state.orderMode);
+    toast('กำลังประมวลผล กรุณารอสักครู่');
+    return;
+  }
+  if (!hasResult()) {
+    state.orderMode = next;
+    return;
+  }
+  if (state.ocrDirty) {
+    const ok = await confirmDialog('การแก้ไขในรายการจะหายไป ต้องการดำเนินการต่อหรือไม่?', { okText: 'ดำเนินการต่อ', danger: true });
+    if (!ok || state.running) {
+      setOrderMode(state.orderMode);
+      return;
+    }
+  }
+  state.orderMode = next;
+  rebuildFromPasses();
+}
+
+// Clears all results. Images stay, and become "รอ" again.
+async function clearResults() {
+  if (state.running) return;
+  const ok = await confirmDialog('ล้างผลลัพธ์ทั้งหมดใช่หรือไม่? (รูปภาพยังคงอยู่)', { okText: 'ล้างผลลัพธ์', danger: true });
+  if (!ok || state.running) return;
+  state.rows = [];
+  state.images.forEach((img) => {
+    img.status = 'wait';
+    img.error = '';
+    img.rawText = '';
+    img.exact = [];
+    img.near = [];
+    img.nearSingle = [];
+    img.passes = [];
+    img.alts = [];
+    img.lowConf = [];
+  });
+  state.ocrDirty = false;
+  setAlert('', '');
+  render();
+  toast('ล้างผลลัพธ์แล้ว');
+}
+
+/* ---------- results ---------- */
+
+function liFor(row) {
+  return els.rows.querySelector('li[data-row-id="' + row.id + '"]');
+}
+
+// Updates validity, duplicate badges, copy-button state and group dividers without rebuilding rows,
+// so focus and clicks on the row controls are not lost.
+function refreshRowMeta() {
+  const seen = new Map();
+  for (const row of state.rows) {
+    const li = liFor(row);
+    if (!li) continue;
+    const prev = seen.get(row.value) || 0;
+    seen.set(row.value, prev + 1);
+    const ok = isRowValid(row);
+    li.classList.toggle('invalid', !ok);
+    li.querySelector('.row-err').hidden = ok;
+    li.querySelector('.badge-dup').hidden = !(prev > 0 && row.value !== '');
+    li.querySelector('.btn-copy-row').disabled = !ok;
+  }
+  renderGroupDividers();
+}
+
+// Divider rows before each group, computed from the selected valid rows only.
+function renderGroupDividers() {
+  els.rows.querySelectorAll('.group-divider').forEach((d) => d.remove());
+  const size = getGroupSize();
+  if (!size) return;
+  const counted = state.rows.filter((r) => r.checked && isRowValid(r));
+  const prefix = groupOpts().labelPrefix;
+  const startRowIds = new Map();
+  groupValues(counted.map((r) => r.value), size).forEach((g) => {
+    startRowIds.set(counted[g.start - 1].id, g);
+  });
+  for (const row of state.rows) {
+    const g = startRowIds.get(row.id);
+    if (!g) continue;
+    const li = liFor(row);
+    if (!li) continue;
+    const divider = document.createElement('li');
+    divider.className = 'group-divider';
+    divider.setAttribute('role', 'presentation');
+    divider.textContent = formatGroupLabel(prefix, g);
+    const note = document.createElement('span');
+    note.className = 'muted';
+    note.textContent = 'นับเฉพาะรายการที่เลือกและครบ 10 หลัก';
+    divider.appendChild(note);
+    els.rows.insertBefore(divider, li);
+  }
+}
+
+function renderImages() {
+  els.imageGrid.replaceChildren();
+  els.imageSection.hidden = state.images.length === 0;
+  els.imageCount.textContent = state.images.length ? 'รวม ' + state.images.length + ' รูป' : '';
+  const locked = state.running;
+  state.images.forEach((img, i) => {
+    const card = document.createElement('li');
+    card.className = 'thumb-card';
+
+    const head = document.createElement('div');
+    head.className = 'thumb-head';
+    const title = document.createElement('span');
+    title.textContent = 'รูปที่ ' + (i + 1);
+    const status = document.createElement('span');
+    status.className = 'status ' + img.status;
+    status.textContent = statusText(img);
+    if (img.error) status.title = img.error;
+    head.append(title, status);
+
+    const thumb = document.createElement('img');
+    thumb.src = img.url;
+    thumb.alt = 'ตัวอย่างรูปที่ ' + (i + 1);
+
+    const name = document.createElement('div');
+    name.className = 'thumb-name mono';
+    name.textContent = img.file.name;
+    const meta = document.createElement('div');
+    meta.className = 'muted';
+    meta.textContent = formatBytes(img.file.size);
+
+    const mk = (text, label, extraClass, disabled, onClick) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-small ' + (extraClass || '');
+      b.textContent = text;
+      b.setAttribute('aria-label', label);
+      b.disabled = disabled;
+      b.addEventListener('click', onClick);
+      return b;
+    };
+    const actions = document.createElement('div');
+    actions.className = 'thumb-actions';
+    const upBtn = mk('▲', 'เลื่อนรูปที่ ' + (i + 1) + ' ขึ้น', '', locked || i === 0, () => moveImage(img, -1));
+    upBtn.dataset.imageId = String(img.id);
+    upBtn.dataset.move = 'up';
+    const downBtn = mk('▼', 'เลื่อนรูปที่ ' + (i + 1) + ' ลง', '', locked || i === state.images.length - 1, () => moveImage(img, 1));
+    downBtn.dataset.imageId = String(img.id);
+    downBtn.dataset.move = 'down';
+    actions.append(upBtn, downBtn, mk('×', 'ลบรูปที่ ' + (i + 1), 'btn-danger', locked, () => removeImage(img)));
+
+    card.append(head, thumb, name, meta, actions);
+    els.imageGrid.appendChild(card);
+  });
+}
+
+function renderRows() {
+  // A rebuild during a run (render() runs per image) must not drop the focus of a row control, nor the caret of a
+  // row value being typed in. A control is identified by its row id and its kind.
+  const active = document.activeElement;
+  const focusedControl = active && active.dataset && active.dataset.rowControl && active.dataset.rowFor ? {
+    rowId: active.dataset.rowFor,
+    kind: active.dataset.rowControl,
+    start: active.selectionStart,
+    end: active.selectionEnd
+  } : null;
+  els.rows.replaceChildren();
+  state.rows.forEach((row, idx) => {
+    const li = document.createElement('li');
+    li.className = 'row';
+    li.dataset.rowId = String(row.id);
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = row.checked;
+    cb.setAttribute('aria-label', 'เลือกชุดที่ ' + (idx + 1));
+    cb.dataset.rowFor = String(row.id);
+    cb.dataset.rowControl = 'check';
+    cb.addEventListener('change', () => {
+      row.checked = cb.checked;
+      markEdited(row);
+      refreshRowMeta();
+      updateSummary();
+    });
+
+    const index = document.createElement('span');
+    index.className = 'idx';
+    index.textContent = String(idx + 1);
+
+    const main = document.createElement('div');
+    main.className = 'row-main';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'value';
+    input.inputMode = 'numeric';
+    input.autocomplete = 'off';
+    input.value = row.value;
+    input.id = 'val-' + row.id;
+    input.dataset.rowFor = String(row.id);
+    input.dataset.rowControl = 'value';
+    input.setAttribute('aria-label', 'ตัวเลขชุดที่ ' + (idx + 1));
+    input.setAttribute('aria-describedby', 'err-' + row.id);
+    // The caret before each edit (beforeinput runs before the value changes). Used to undo a rejected typed digit.
+    let caretBefore = null;
+    input.addEventListener('beforeinput', () => {
+      caretBefore = input.selectionStart;
+    });
+    input.addEventListener('input', (e) => {
+      const prevValue = row.value;
+      const prevCaret = caretBefore == null ? prevValue.length : caretBefore;
+      caretBefore = null;
+      // Edits are cleaned here. A typed digit beyond 10 digits is undone; a paste or a drop is cut to 10 digits.
+      const edit = cleanSetEdit(input.value, input.selectionStart, e.inputType);
+      if (edit.reject) {
+        input.value = prevValue;
+        input.setSelectionRange(prevCaret, prevCaret);
+        return;
+      }
+      if (edit.value !== input.value) {
+        input.value = edit.value;
+        input.setSelectionRange(edit.caret, edit.caret);
+      }
+      const clean = edit.value;
+      if (clean !== row.value) {
+        markEdited(row);
+        if (row.conflict) {
+          row.conflict = false;
+          row.alternatives = [];
+          row.lowConfidence = false;
+          const cf = li.querySelector('.badge-conflict');
+          if (cf) cf.remove();
+        }
+      }
+      row.value = clean;
+      refreshRowMeta();
+      updateSummary();
+    });
+    input.addEventListener('change', () => {
+      // No full re-render here: it would rebuild the rows and swallow the next click.
+      refreshRowMeta();
+      updateSummary();
+    });
+
+    const err = document.createElement('span');
+    err.className = 'row-err';
+    err.id = 'err-' + row.id;
+    err.textContent = 'ต้องมี 10 หลัก';
+
+    const dup = document.createElement('span');
+    dup.className = 'badge badge-dup';
+    dup.textContent = 'ซ้ำ';
+    dup.hidden = true;
+
+    main.append(input, err, dup);
+    if (row.conflict) {
+      const cf = document.createElement('span');
+      cf.className = 'badge badge-conflict';
+      cf.textContent = 'ตรวจสอบ';
+      const alts = row.alternatives || [];
+      if (row.lowConfidence) cf.title = 'ความมั่นใจต่ำ ควรตรวจสอบ';
+      else cf.title = alts.length ? 'OCR อ่านได้หลายแบบ: ' + alts.join(', ') : 'ควรตรวจสอบตัวเลขนี้';
+      main.appendChild(cf);
+    }
+    if (row.source === 'ocr') {
+      const imgBadge = document.createElement('span');
+      imgBadge.className = 'badge badge-img';
+      imgBadge.textContent = 'รูป ' + (row.imageIndex + 1);
+      main.appendChild(imgBadge);
+    }
+
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'btn btn-small btn-copy-row';
+    copyBtn.textContent = 'คัดลอก';
+    copyBtn.setAttribute('aria-label', 'คัดลอกชุดที่ ' + (idx + 1));
+    copyBtn.dataset.rowFor = String(row.id);
+    copyBtn.dataset.rowControl = 'copy';
+    copyBtn.addEventListener('click', async () => {
+      const ok = await copyText(row.value);
+      toast(ok ? 'คัดลอกแล้ว 1 ชุด' : 'คัดลอกไม่สำเร็จ');
+    });
+
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'btn btn-small btn-danger btn-del-row';
+    delBtn.textContent = 'ลบ';
+    delBtn.setAttribute('aria-label', 'ลบแถวที่ ' + (idx + 1));
+    delBtn.dataset.rowFor = String(row.id);
+    delBtn.dataset.rowControl = 'delete';
+    delBtn.addEventListener('click', () => {
+      markEdited(row);
+      const at = state.rows.indexOf(row);
+      state.rows = state.rows.filter((r) => r !== row);
+      render();
+      focusAfterRowDelete(at);
+    });
+
+    li.append(cb, index, main, copyBtn, delBtn);
+    els.rows.appendChild(li);
+  });
+  refreshRowMeta();
+  if (focusedControl) {
+    const el = els.rows.querySelector('li[data-row-id="' + focusedControl.rowId + '"] [data-row-control="' + focusedControl.kind + '"]');
+    if (el) {
+      el.focus({ preventScroll: true });
+      if (focusedControl.kind === 'value') {
+        try {
+          el.setSelectionRange(focusedControl.start, focusedControl.end);
+        } catch (e) {
+          // not a text field; the focus alone is enough
+        }
+      }
+    }
+  }
+}
+
+// After a row is deleted, focus goes to the delete button of the row that took its place, else of the row before
+// it, else to the add-row button.
+function focusAfterRowDelete(at) {
+  const target = state.rows[at] || state.rows[at - 1];
+  const li = target ? liFor(target) : null;
+  const btn = li ? li.querySelector('.btn-del-row') : null;
+  if (btn) btn.focus();
+  else els.addRow.focus();
+}
+
+function renderNearMiss() {
+  els.nearList.replaceChildren();
+  let total = 0;
+  state.images.forEach((img, i) => {
+    img.near.forEach((value) => {
+      total++;
+      const key = img.id + ':' + value;
+      const li = document.createElement('li');
+      const text = document.createElement('span');
+      text.className = 'mono';
+      text.textContent = value;
+      const len = document.createElement('span');
+      len.className = 'muted';
+      const single = (img.nearSingle || []).includes(value);
+      len.textContent = single ? '(อ่านได้จากรอบเดียว)' : '(' + value.length + ' หลัก)';
+      const badge = document.createElement('span');
+      badge.className = 'badge badge-img';
+      badge.textContent = 'รูป ' + (i + 1);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-small';
+      const used = state.rows.some((r) => r.nearKey === key);
+      btn.textContent = used ? 'เพิ่มแล้ว' : 'เพิ่มเข้าในรายการ';
+      btn.disabled = used;
+      btn.setAttribute('aria-label', 'เพิ่มตัวเลข ' + value + ' จากรูปที่ ' + (i + 1) + ' เข้าในรายการ');
+      btn.addEventListener('click', () => {
+        state.rows.push({ id: state.nextRowId++, value, checked: true, source: 'manual', imageIndex: null, edited: false, conflict: true, alternatives: [], nearKey: key });
+        orderRows();
+        render();
+        toast('เพิ่มแถวแล้ว แก้ไขให้ครบ 10 หลักในรายการ');
+      });
+      li.append(text, len, badge, btn);
+      els.nearList.appendChild(li);
+    });
+  });
+  els.nearEmpty.hidden = total > 0;
+}
+
+function renderRaw() {
+  els.rawList.replaceChildren();
+  const done = state.images.map((img, i) => ({ img, i })).filter((x) => x.img.status === 'done');
+  if (done.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'muted';
+    p.textContent = 'ยังไม่มีข้อความดิบ';
+    els.rawList.appendChild(p);
+    return;
+  }
+  done.forEach(({ img, i }) => {
+    const d = document.createElement('details');
+    d.open = state.rawOpenIds.has(img.id);
+    d.addEventListener('toggle', () => {
+      if (d.open) state.rawOpenIds.add(img.id);
+      else state.rawOpenIds.delete(img.id);
+    });
+    const s = document.createElement('summary');
+    s.textContent = 'รูปที่ ' + (i + 1) + ' · ' + img.file.name;
+    const pre = document.createElement('pre');
+    pre.textContent = img.rawText;
+    d.append(s, pre);
+    els.rawList.appendChild(d);
+  });
+}
+
+function updateSummary() {
+  const validAll = allValidValues().length;
+  const validSel = selectedValidValues().length;
+  const target = getTargetCount();
+  const x = detectedCount();
+  const anyResult = hasResult();
+  const pending = state.images.some((img) => img.status !== 'done');
+  const errCount = state.images.filter((img) => img.status === 'error').length;
+  const size = getGroupSize();
+
+  let counters = '';
+  if (anyResult) {
+    counters = 'ตรวจพบทั้งหมด ' + x + ' ชุด · ใช้งาน ' + validSel + ' ชุด';
+    if (size) counters += ' · แบ่งเป็น ' + groupValues(selectedValidValues(), size).length + ' กลุ่ม';
+  }
+  els.counters.textContent = counters;
+
+  const msgs = [];
+  const qtyChecked = document.querySelector('input[name="qty"]:checked');
+  if (qtyChecked && qtyChecked.value === 'custom' && target === null) {
+    msgs.push('กรุณาใส่จำนวนเต็มตั้งแต่ 1 ขึ้นไป (ผลจากรูปจะไม่ถูกเลือกจนกว่าจะใส่จำนวนที่ถูกต้อง)');
+  }
+  if (anyResult && !pending && x === 0) {
+    msgs.push('ไม่พบชุดตัวเลข 10 หลักในรูปภาพ');
+  } else if (anyResult && !pending && target !== null && target !== Infinity && x < target) {
+    msgs.push('พบเพียง ' + x + ' ชุด น้อยกว่าที่กำหนด (' + target + ' ชุด) — ระบบจะไม่สร้างตัวเลขเพิ่มเอง');
+  }
+  if (errCount > 0) {
+    msgs.push('มี ' + errCount + ' รูปที่อ่านไม่สำเร็จ (ดูสถานะในรายการรูป) กดเริ่มอ่านข้อความอีกครั้งเพื่ออ่านรูปที่เหลือ');
+  }
+  const invalidCount = state.rows.filter((r) => !isRowValid(r)).length;
+  if (invalidCount > 0) {
+    msgs.push('มี ' + invalidCount + ' แถวที่ไม่ครบ 10 หลัก จะไม่ถูกรวมในการส่งออกหรือคัดลอก');
+  }
+  els.resultMsg.replaceChildren(...msgs.map((text) => {
+    const p = document.createElement('p');
+    p.textContent = text;
+    return p;
+  }));
+  els.resultMsg.hidden = msgs.length === 0;
+
+  els.copyAll.disabled = validAll === 0;
+  els.copySelected.disabled = validSel === 0;
+  els.copyWord.disabled = validSel === 0;
+  els.downloadDocx.disabled = validSel === 0 || !currentStickerLayout();
+  els.selectToggle.disabled = state.rows.length === 0;
+}
+
+function updateControls() {
+  const busy = state.running;
+  const hasPending = state.images.some((img) => img.status !== 'done');
+  els.runBtn.disabled = busy || !hasPending;
+  els.rerunAllBtn.disabled = busy || state.images.length === 0;
+  els.clearImagesBtn.disabled = busy || state.images.length === 0;
+  els.pickBtn.disabled = busy;
+  // Clearing the results is not allowed while a run is active.
+  els.clearResults.disabled = busy || (state.rows.length === 0 && !hasResult());
+  // Stop is shown and enabled only while a run is active.
+  els.stopBtn.hidden = !busy;
+  els.stopBtn.disabled = !busy;
+}
+
+function render() {
+  renderImages();
+  renderRows();
+  renderNearMiss();
+  renderRaw();
+  els.empty.hidden = state.rows.length > 0;
+  updateGroupPreview();
+  updateStickerPreview();
+  updateSummary();
+  updateControls();
+}
+
+/* ---------- copy and export ---------- */
+
+function legacyCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.top = '0';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch (e) {
+    ok = false;
+  }
+  ta.remove();
+  return ok;
+}
+
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (e) {
+    // fall through to the legacy path
+  }
+  return legacyCopy(text);
+}
+
+async function copyPlain(values, opts) {
+  const ok = await copyText(buildPlainText(values, opts));
+  toast(ok ? 'คัดลอกแล้ว ' + values.length + ' ชุด' : 'คัดลอกไม่สำเร็จ');
+}
+
+async function copyForWord(values, opts) {
+  const plain = buildPlainText(values, opts);
+  if (typeof ClipboardItem !== 'undefined' && navigator.clipboard && navigator.clipboard.write) {
+    const html = buildWordHtml(values, opts);
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([plain], { type: 'text/plain' })
+        })
+      ]);
+      toast('คัดลอกสำหรับ Word แล้ว ' + values.length + ' ชุด');
+      return;
+    } catch (e) {
+      // fall through to plain text
+    }
+  }
+  const ok = await copyText(plain);
+  toast(ok ? 'คัดลอกแล้ว ' + values.length + ' ชุด (ข้อความธรรมดา)' : 'คัดลอกไม่สำเร็จ');
+}
+
+async function downloadDocx(values) {
+  const size = getStickerSize();
+  if (!computeStickerLayout(size.w, size.h)) {
+    toast('ขนาดสติกเกอร์ไม่ถูกต้อง');
+    return;
+  }
+  if (typeof JSZip === 'undefined') {
+    toast('โหลดไลบรารี JSZip ไม่สำเร็จ ไม่สามารถสร้างไฟล์ Word ได้');
+    return;
+  }
+  try {
+    const zip = new JSZip();
+    zip.file('[Content_Types].xml', CONTENT_TYPES_XML);
+    zip.file('_rels/.rels', ROOT_RELS_XML);
+    zip.file('word/document.xml', buildStickerDocumentXml(values, size.w, size.h));
+    const blob = await zip.generateAsync({ type: 'blob', mimeType: DOCX_MIME });
+    const filename = 'stickers-' + buildFileStamp(new Date()) + '.docx';
+    // Inside a claude.ai artifact, plain <a download> is blocked; use the downloads capability.
+    const downloads = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+    if (downloads) {
+      try {
+        await downloads.save({ filename, data: blob });
+        toast('ดาวน์โหลดไฟล์ ' + values.length + ' ชุดแล้ว');
+      } catch (e) {
+        if (e && e.code !== 'declined') toast('ดาวน์โหลดไม่สำเร็จ (' + (e.code || 'error') + ')');
+      }
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast('ดาวน์โหลดไฟล์ ' + values.length + ' ชุดแล้ว');
+  } catch (err) {
+    toast('สร้างไฟล์ Word ไม่สำเร็จ');
+  }
+}
+
+function bindResults() {
+  els.selectToggle.addEventListener('click', () => {
+    const allChecked = state.rows.length > 0 && state.rows.every((r) => r.checked);
+    state.rows.forEach((r) => {
+      r.checked = !allChecked;
+      markEdited(r);
+    });
+    render();
+  });
+  els.copySelected.addEventListener('click', () => copyPlain(selectedValidValues(), groupOpts()));
+  els.copyAll.addEventListener('click', () => copyPlain(allValidValues()));
+  els.copyWord.addEventListener('click', () => copyForWord(selectedValidValues(), groupOpts()));
+  els.downloadDocx.addEventListener('click', () => downloadDocx(selectedValidValues()));
+  els.addRow.addEventListener('click', () => {
+    const id = state.nextRowId++;
+    state.rows.push({ id, value: '', checked: true, source: 'manual', imageIndex: null, edited: false, nearKey: null });
+    render();
+    const input = document.getElementById('val-' + id);
+    if (input) input.focus();
+  });
+  els.clearResults.addEventListener('click', clearResults);
+}
+
+/* ---------- init ---------- */
+
+function bindSettings() {
+  document.querySelectorAll('input[name="qty"]').forEach((r) => {
+    r.addEventListener('change', onQuantityChange);
+  });
+  els.customQty.addEventListener('input', () => {
+    applySelection();
+    render();
+  });
+  els.fixCheck.addEventListener('change', onFixConfusionsChange);
+  document.querySelectorAll('input[name="order"]').forEach((r) => {
+    r.addEventListener('change', onOrderModeChange);
+  });
+  document.querySelectorAll('input[name="sticker"]').forEach((r) => {
+    r.addEventListener('change', onStickerSettingsChange);
+  });
+  els.stickerW.addEventListener('input', onStickerSettingsChange);
+  els.stickerH.addEventListener('input', onStickerSettingsChange);
+  document.querySelectorAll('input[name="group"]').forEach((r) => {
+    r.addEventListener('change', onGroupSettingsChange);
+  });
+  els.groupCustom.addEventListener('input', onGroupSettingsChange);
+  els.groupLabel.addEventListener('input', onGroupSettingsChange);
+  els.runBtn.addEventListener('click', runOcr);
+  els.stopBtn.addEventListener('click', stopReading);
+  els.rerunAllBtn.addEventListener('click', rerunAll);
+}
+
+function init() {
+  bindUpload();
+  bindSettings();
+  bindResults();
+  // Safety net: an error nobody handled must not leave the controls locked.
+  window.addEventListener('unhandledrejection', (e) => onUnexpectedError('unhandledrejection', e.reason));
+  window.addEventListener('error', (e) => onUnexpectedError('error', e.error || e.message));
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
