@@ -14,7 +14,8 @@ if (!m) throw new Error('pure markers not found in index.html');
 const NAMES = [
   'escapeXml', 'buildFileStamp', 'toastDurationMs', 'parseNumberInput',
   'computeStickerLayout', 'stickerFontPt', 'stickerFontHalfPoints', 'stickerTextStyle',
-  'stickerDigitHeightMm', 'buildStickerDocumentXml', 'escapePdfString', 'buildStickerPdf'
+  'stickerDigitHeightMm', 'buildStickerDocumentXml', 'escapePdfString', 'buildStickerPdf',
+  'stickerScaledSize', 'buildStickerPreviewSvg'
 ];
 const ctx = {};
 vm.createContext(ctx);
@@ -416,6 +417,44 @@ tryEq('pdf: layout 9x25 throws',
 tryEq('pdf: gap 11 throws',
   () => { try { ctx.buildStickerPdf(PDF_VALUES, 45, 25, 11); return 'no throw'; } catch (e) { return 'threw'; } }, 'threw');
 
+// --- size slider (pure): effective size = base x percent, rounded to the nearest 0.5 mm ---
+tryEq('scaled size: 100% keeps 45x25', () => ctx.stickerScaledSize(45, 25, 100), { w: 45, h: 25 });
+tryEq('scaled size: 150% of 45x25 -> 67.5 x 37.5', () => ctx.stickerScaledSize(45, 25, 150), { w: 67.5, h: 37.5 });
+tryEq('scaled size: 50% of 45x12 -> 22.5 x 6', () => ctx.stickerScaledSize(45, 12, 50), { w: 22.5, h: 6 });
+tryEq('scaled size: 111% of 45x25 rounds to the nearest 0.5 mm (50 x 28)', () => ctx.stickerScaledSize(45, 25, 111), { w: 50, h: 28 });
+tryEq('scaled size: 49% is below the slider range -> null', () => ctx.stickerScaledSize(45, 25, 49), null);
+tryEq('scaled size: 201% is above the slider range -> null', () => ctx.stickerScaledSize(45, 25, 201), null);
+tryEq('scaled size: NaN percent -> null', () => ctx.stickerScaledSize(45, 25, NaN), null);
+tryEq('scaled size: string percent -> null', () => ctx.stickerScaledSize(45, 25, '100'), null);
+tryEq('scaled size: NaN base width -> null', () => ctx.stickerScaledSize(NaN, 25, 100), null);
+tryEq('scaled size: infinite base height -> null', () => ctx.stickerScaledSize(45, Infinity, 100), null);
+
+// --- sticker preview SVG (pure): one label in mm units; text placement mirrors the PDF ---
+const PREVIEW_SAMPLE = '0812345678';
+tryEq('preview svg: well-formed (45x25 normal)', () => wellFormed(ctx.buildStickerPreviewSvg(45, 25, 'normal', PREVIEW_SAMPLE)), true);
+tryEq('preview svg: well-formed (45x25 xlarge)', () => wellFormed(ctx.buildStickerPreviewSvg(45, 25, 'xlarge', PREVIEW_SAMPLE)), true);
+tryEq('preview svg: viewBox matches the label in mm',
+  () => ctx.buildStickerPreviewSvg(45, 25, 'normal', PREVIEW_SAMPLE).includes('viewBox="0 0 45.00 25.00"'), true);
+tryEq('preview svg: role img and Thai aria-label',
+  () => ctx.buildStickerPreviewSvg(45, 25, 'normal', PREVIEW_SAMPLE).includes('role="img" aria-label="ตัวอย่างสติกเกอร์ 45 × 25 มม."'), true);
+tryEq('preview svg: sample is the text content',
+  () => ctx.buildStickerPreviewSvg(45, 25, 'normal', PREVIEW_SAMPLE).includes('>0812345678</text>'), true);
+tryEq('preview svg: sample is escaped', () => ctx.buildStickerPreviewSvg(45, 25, 'normal', '<&>').includes('&lt;&amp;&gt;'), true);
+tryEq('preview svg: sample never appears raw', () => ctx.buildStickerPreviewSvg(45, 25, 'normal', '<&>').includes('<&>'), false);
+tryEq('preview svg: normal 45x25 font-size is 6.53 mm (18.5 pt)',
+  () => ctx.buildStickerPreviewSvg(45, 25, 'normal', PREVIEW_SAMPLE).includes('font-size="6.53"'), true);
+tryEq('preview svg: xlarge 45x25 font-size is 10.41 mm (29.5 pt)',
+  () => ctx.buildStickerPreviewSvg(45, 25, 'xlarge', PREVIEW_SAMPLE).includes('font-size="10.41"'), true);
+tryEq('preview svg: normal 45x25 is centred at x=22.50, baseline y=14.84',
+  () => ctx.buildStickerPreviewSvg(45, 25, 'normal', PREVIEW_SAMPLE).includes('<text x="22.50" y="14.84"'), true);
+tryEq('preview svg: normal has no condensing group',
+  () => ctx.buildStickerPreviewSvg(45, 25, 'normal', PREVIEW_SAMPLE).includes('scale('), false);
+tryEq('preview svg: xlarge 45x25 wraps the text in translate and scale(0.65 1)',
+  () => ctx.buildStickerPreviewSvg(45, 25, 'xlarge', PREVIEW_SAMPLE).includes('<g transform="translate(22.50 0) scale(0.65 1)"><text x="0"'), true);
+tryEq('preview svg: width below 20 mm -> empty string', () => ctx.buildStickerPreviewSvg(9, 25, 'normal', PREVIEW_SAMPLE), '');
+tryEq('preview svg: height below 5 mm -> empty string', () => ctx.buildStickerPreviewSvg(45, 4, 'normal', PREVIEW_SAMPLE), '');
+tryEq('preview svg: NaN size -> empty string', () => ctx.buildStickerPreviewSvg(NaN, 25, 'normal', PREVIEW_SAMPLE), '');
+
 // --- source guards for the manual-entry page ---
 const fnBodyAt = (sig) => {
   const i = src.indexOf(sig);
@@ -511,7 +550,7 @@ eq('dialogs: no window.confirm/alert/prompt call', /(^|[^A-Za-z0-9_])(confirm|al
 }
 
 // Sticker radio fieldset (same as before).
-eq('sticker: fieldset legend present', src.includes('<legend>ขนาดดวงสติกเกอร์</legend>'), true);
+eq('sticker: fieldset legend renamed to รูปทรงตั้งต้น', src.includes('<legend>รูปทรงตั้งต้น</legend>') && !src.includes('<legend>ขนาดดวงสติกเกอร์</legend>'), true);
 eq('sticker: 45x25 radio is checked by default', src.includes('<input type="radio" name="sticker" value="45x25" checked>'), true);
 eq('sticker: 45x12 radio present', src.includes('<input type="radio" name="sticker" value="45x12">'), true);
 eq('sticker: custom radio present', src.includes('<input type="radio" name="sticker" value="custom">'), true);
@@ -520,11 +559,54 @@ eq('sticker: width input', /<input type="number" id="sticker-w"[^>]*value="45"/.
 eq('sticker: height input', /<input type="number" id="sticker-h"[^>]*value="25"/.test(src), true);
 eq('sticker: preview is a status region', src.includes('id="sticker-preview" class="muted" role="status" aria-live="polite"'), true);
 eq('sticker: invalid preview style', src.includes('#sticker-preview.field-error { color: var(--error); }'), true);
-eq('sticker: invalid size message', src.includes('ขนาดไม่ถูกต้อง: กว้างอย่างน้อย 20 มม. สูงอย่างน้อย 5 มม. และต้องไม่เกินหน้า A4'), true);
+eq('sticker: invalid size message', src.includes('ขนาดไม่ถูกต้อง: กว้างอย่างน้อย 20 มม. สูงอย่างน้อย 5 มม. และต้องไม่เกินหน้า A4 (ลองเลื่อนแถบขนาดดวง)'), true);
 eq('sticker: print hint',
   src.includes('ก่อนพิมพ์จริง ลองพิมพ์ลงกระดาษธรรมดา 1 แผ่นแล้วทาบกับบัตรซิม · ตอนสั่งพิมพ์ให้เลือกกระดาษ A4 และขนาด 100% หรือ "ขนาดจริง" (ไม่ย่อให้พอดีหน้า) · ไฟล์ PDF พิมพ์ได้ขนาดตรงกว่า โดยเฉพาะจากมือถือ'), true);
 eq('sticker: preview shows columns, rows and sheet count',
   fnBodyAt('function updateStickerPreview(').includes(' คอลัมน์ × ') && fnBodyAt('function updateStickerPreview(').includes(' ดวงต่อแผ่น A4'), true);
+
+// Size slider (step 2): scales the whole label, -/+ buttons, live SVG preview box.
+{
+  const scaleTag = tagOf('sticker-scale');
+  eq('scale: range input exists', /^<input type="range"/.test(scaleTag), true);
+  eq('scale: range is min 50, max 200, step 5, default 100',
+    /min="50"/.test(scaleTag) && /max="200"/.test(scaleTag) && /step="5"/.test(scaleTag) && /value="100"/.test(scaleTag), true);
+  eq('scale: label text', src.includes('<label for="sticker-scale">ขนาดดวง</label>'), true);
+  eq('scale: captions เล็ก and ใหญ่ at the two ends',
+    src.includes('<span class="scale-end">เล็ก</span>') && src.includes('<span class="scale-end">ใหญ่</span>'), true);
+  eq('scale: range is 32 px high and uses the primary accent',
+    /input\[type="range"\][^}]*min-height: 32px/.test(src) && src.includes('accent-color: var(--primary)'), true);
+  eq('scale: output element shows the percent and size', /^<output/.test(tagOf('sticker-scale-value')), true);
+  const downTag = tagOf('sticker-scale-down');
+  const upTag = tagOf('sticker-scale-up');
+  eq('scale: minus button is type=button with aria-label ลดขนาด', downTag.includes('type="button"') && downTag.includes('aria-label="ลดขนาด"'), true);
+  eq('scale: plus button is type=button with aria-label เพิ่มขนาด', upTag.includes('type="button"') && upTag.includes('aria-label="เพิ่มขนาด"'), true);
+  eq('scale: buttons step by 5 percent',
+    src.includes('els.stickerScaleDown.addEventListener(\'click\', () => stepStickerScale(-5));') &&
+    src.includes('els.stickerScaleUp.addEventListener(\'click\', () => stepStickerScale(5));'), true);
+  eq('scale: slider updates live (input) and on change',
+    /els\.stickerScale\.addEventListener\('input', onStickerSettingsChange\)/.test(src) &&
+    /els\.stickerScale\.addEventListener\('change', onStickerSettingsChange\)/.test(src), true);
+  eq('scale: preview box container is a div', /^<div/.test(tagOf('sticker-preview-svg')), true);
+  eq('scale: real-size note text', src.includes('ขนาดบนจออาจไม่ตรงกับของจริง ให้ดูตัวเลข มม. เป็นหลัก'), true);
+  eq('scale: preview is parsed with DOMParser and innerHTML is never used',
+    src.includes('new DOMParser()') && !src.includes('innerHTML'), true);
+  eq('scale: source guard comment says the builder escapes the sample', src.includes('escapes the sample'), true);
+  eq('scale: preview sample is the first valid number or 0812345678',
+    src.includes("state.parsed.valid[0] || '0812345678'"), true);
+  eq('scale: preview SVG width is the label size in mm',
+    fnBodyAt('function updateStickerPreviewSvg(').includes("+ 'mm'"), true);
+  eq('scale: updateStickerPreview refreshes the preview box', fnBodyAt('function updateStickerPreview(').includes('updateStickerPreviewSvg('), true);
+  eq('scale: effective size is stickerScaledSize(base, percent)', fnBodyAt('function getStickerSize(').includes('stickerScaledSize('), true);
+  eq('scale: preview line starts with the effective size',
+    fnBodyAt('function updateStickerPreview(').includes("'ขนาดดวง ' + size.w"), true);
+  eq('scale: both downloads take the effective size from getStickerSize',
+    fnBodyAt('async function downloadDocx(').includes('const size = getStickerSize();') &&
+    fnBodyAt('async function downloadPdf(').includes('const size = getStickerSize();'), true);
+  eq('scale: saved as scale in the size settings', fnBodyAt('function saveSizeSettings(').includes('scale:'), true);
+  eq('scale: restored only when 50..200 and a multiple of 5',
+    fnBodyAt('function restoreSettings(').includes('n >= 50 && n <= 200 && n % 5 === 0'), true);
+}
 
 // Digit size: a radio group next to the gap input, saved with the size, shown in the preview.
 eq('digit size: legend', src.includes('<legend>ขนาดตัวเลข</legend>'), true);

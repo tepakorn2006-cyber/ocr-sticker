@@ -149,6 +149,36 @@
   .field-inline { display: grid; gap: 6px; margin-top: 10px; }
   .field-inline label { font-size: .95rem; }
   #sticker-preview.field-error { color: var(--error); }
+  .scale-row { display: flex; align-items: center; gap: 8px; }
+  .scale-row input[type="range"] {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    min-height: 32px;
+    margin: 0;
+    accent-color: var(--primary);
+  }
+  .scale-step {
+    flex: none;
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .scale-ends { display: flex; justify-content: space-between; font-size: .85rem; }
+  .sticker-preview-box { display: grid; gap: 6px; }
+  .sticker-preview-svg {
+    display: flex;
+    justify-content: center;
+    overflow-x: auto;
+    padding: 10px;
+    background: var(--card);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+  }
+  .sticker-preview-svg svg { display: block; max-width: 100%; height: auto; }
   input[type="number"] {
     font: inherit;
     padding: 8px 10px;
@@ -247,8 +277,8 @@
   <section class="card" aria-labelledby="h-size">
     <h2 id="h-size">2. ขนาดสติกเกอร์</h2>
     <fieldset>
-      <legend>ขนาดดวงสติกเกอร์</legend>
-      <div class="chips" role="radiogroup" aria-label="ขนาดดวงสติกเกอร์">
+      <legend>รูปทรงตั้งต้น</legend>
+      <div class="chips" role="radiogroup" aria-label="รูปทรงตั้งต้น">
         <label class="chip"><input type="radio" name="sticker" value="45x25" checked><span>45 × 25 มม.</span></label>
         <label class="chip"><input type="radio" name="sticker" value="45x12"><span>45 × 12 มม.</span></label>
         <label class="chip"><input type="radio" name="sticker" value="custom"><span>กำหนดเอง</span></label>
@@ -258,6 +288,20 @@
         <input type="number" id="sticker-w" min="20" step="0.5" value="45" inputmode="decimal">
         <label for="sticker-h">สูง (มม.)</label>
         <input type="number" id="sticker-h" min="5" step="0.5" value="25" inputmode="decimal">
+      </div>
+      <div class="field-inline">
+        <label for="sticker-scale">ขนาดดวง</label>
+        <div class="scale-row">
+          <button type="button" id="sticker-scale-down" class="btn scale-step" aria-label="ลดขนาด">−</button>
+          <input type="range" id="sticker-scale" min="50" max="200" step="5" value="100">
+          <button type="button" id="sticker-scale-up" class="btn scale-step" aria-label="เพิ่มขนาด">+</button>
+        </div>
+        <div class="scale-ends muted"><span class="scale-end">เล็ก</span><span class="scale-end">ใหญ่</span></div>
+        <output id="sticker-scale-value" for="sticker-scale" class="muted">100% · 45 × 25 มม.</output>
+      </div>
+      <div class="field-inline sticker-preview-box">
+        <div id="sticker-preview-svg" class="sticker-preview-svg"></div>
+        <p class="muted hint">ขนาดบนจออาจไม่ตรงกับของจริง ให้ดูตัวเลข มม. เป็นหลัก</p>
       </div>
       <div class="field-inline">
         <label for="sticker-gap">ช่องไฟระหว่างดวง (มม.)</label>
@@ -617,6 +661,43 @@ function parseNumberInput(text) {
   return { valid, invalid, duplicates };
 }
 
+// Size slider: the label size is the base size times percent / 100, rounded to the nearest 0.5 mm.
+// Returns { w, h } in mm, or null when the base is not finite or percent is outside 50..200.
+const STICKER_SCALE_MIN = 50;
+const STICKER_SCALE_MAX = 200;
+function stickerScaledSize(baseW, baseH, percent) {
+  if (!Number.isFinite(baseW) || !Number.isFinite(baseH)) return null;
+  if (!Number.isFinite(percent) || percent < STICKER_SCALE_MIN || percent > STICKER_SCALE_MAX) return null;
+  const halfMm = (mm) => Math.round(mm * percent / 100 * 2) / 2;
+  return { w: halfMm(baseW), h: halfMm(baseH) };
+}
+
+// SVG preview of one label, in mm units (viewBox only; the page sets the on-screen width).
+// Text placement mirrors buildStickerPdf: centred on x, baseline half a cap height below the centre.
+// A condensed size (scale under 100) is squeezed horizontally with a scale() group, like Tz in the PDF.
+// Returns '' when the size is not usable. The sample is escaped with escapeXml.
+function buildStickerPreviewSvg(labelW, labelH, sizeKey, sample) {
+  if (computeStickerLayout(labelW, labelH, 0) === null) return '';
+  const style = stickerTextStyle(labelW, labelH, sizeKey);
+  const f = (n) => n.toFixed(2);
+  const fontMm = style.pt * 0.3528;
+  const cx = labelW / 2;
+  const cy = labelH / 2 + PDF_HALF_CAP_EM * fontMm;
+  const condensed = style.scale < 100;
+  const textAttrs = ' x="' + (condensed ? '0' : f(cx)) + '" y="' + f(cy) + '"' +
+    ' font-family="Helvetica, Arial, sans-serif" font-weight="bold" font-size="' + f(fontMm) + '"' +
+    ' fill="#000" text-anchor="middle"';
+  const text = '<text' + textAttrs + '>' + escapeXml(sample == null ? '' : sample) + '</text>';
+  const body = condensed
+    ? '<g transform="translate(' + f(cx) + ' 0) scale(' + f(style.scale / 100) + ' 1)">' + text + '</g>'
+    : text;
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + f(labelW) + ' ' + f(labelH) + '"' +
+    ' role="img" aria-label="ตัวอย่างสติกเกอร์ ' + labelW + ' × ' + labelH + ' มม.">' +
+    '<rect x="0.30" y="0.30" width="' + f(labelW - 0.6) + '" height="' + f(labelH - 0.6) + '"' +
+    ' fill="#fff" stroke="#999" stroke-width="0.30" stroke-dasharray="1 1"/>' +
+    body + '</svg>';
+}
+
 /* @pure-end */
 
 
@@ -638,6 +719,11 @@ const els = {
   stickerW: $('#sticker-w'),
   stickerH: $('#sticker-h'),
   stickerGap: $('#sticker-gap'),
+  stickerScale: $('#sticker-scale'),
+  stickerScaleDown: $('#sticker-scale-down'),
+  stickerScaleUp: $('#sticker-scale-up'),
+  stickerScaleValue: $('#sticker-scale-value'),
+  stickerPreviewSvg: $('#sticker-preview-svg'),
   stickerPreview: $('#sticker-preview'),
   downloadPdf: $('#download-pdf'),
   downloadDocx: $('#download-docx'),
@@ -673,7 +759,7 @@ function saveDraftSoon() {
 }
 
 function saveSizeSettings() {
-  storageSet(SIZE_KEY, JSON.stringify({ mode: getStickerMode(), w: els.stickerW.value, h: els.stickerH.value, gap: els.stickerGap.value, digit: getDigitSize() }));
+  storageSet(SIZE_KEY, JSON.stringify({ mode: getStickerMode(), w: els.stickerW.value, h: els.stickerH.value, gap: els.stickerGap.value, scale: els.stickerScale.value, digit: getDigitSize() }));
 }
 
 function restoreSettings() {
@@ -689,6 +775,11 @@ function restoreSettings() {
   if (typeof saved.w === 'string') els.stickerW.value = saved.w;
   if (typeof saved.h === 'string') els.stickerH.value = saved.h;
   if (typeof saved.gap === 'string') els.stickerGap.value = saved.gap;
+  // Slider percent: only a whole number from 50 to 200 in steps of 5 is restored; anything else keeps 100.
+  if (typeof saved.scale === 'string' && /^\d+$/.test(saved.scale)) {
+    const n = Number(saved.scale);
+    if (n >= 50 && n <= 200 && n % 5 === 0) els.stickerScale.value = saved.scale;
+  }
   const digit = ['normal', 'large', 'xlarge'].includes(saved.digit) ? saved.digit : 'normal';
   document.querySelector('input[name="digit-size"][value="' + digit + '"]').checked = true;
 }
@@ -793,10 +884,51 @@ function getStickerGap() {
   return els.stickerGap.valueAsNumber;
 }
 
+// Effective size = base size (preset or custom inputs) x slider percent, in mm. w and h are NaN when not usable.
 function getStickerSize() {
   const mode = getStickerMode();
-  if (mode === 'custom') return { w: els.stickerW.valueAsNumber, h: els.stickerH.valueAsNumber, gap: getStickerGap() };
-  return Object.assign({}, STICKER_PRESETS[mode] || STICKER_PRESETS['45x25'], { gap: getStickerGap() });
+  const base = mode === 'custom'
+    ? { w: els.stickerW.valueAsNumber, h: els.stickerH.valueAsNumber }
+    : (STICKER_PRESETS[mode] || STICKER_PRESETS['45x25']);
+  const scaled = stickerScaledSize(base.w, base.h, els.stickerScale.valueAsNumber);
+  return { w: scaled ? scaled.w : NaN, h: scaled ? scaled.h : NaN, gap: getStickerGap() };
+}
+
+// Slider output: "100% · 45 × 25 มม." and the -/+ buttons stop at the ends of the range.
+function updateScaleOutput(size) {
+  const percent = els.stickerScale.value;
+  const sizeText = Number.isFinite(size.w) && Number.isFinite(size.h)
+    ? size.w + ' × ' + size.h + ' มม.'
+    : 'ขนาดไม่ถูกต้อง';
+  els.stickerScaleValue.textContent = percent + '% · ' + sizeText;
+  const value = els.stickerScale.valueAsNumber;
+  els.stickerScaleDown.disabled = value <= STICKER_SCALE_MIN;
+  els.stickerScaleUp.disabled = value >= STICKER_SCALE_MAX;
+}
+
+// Moves the slider by delta percent, kept inside the range, then updates everything as a change would.
+function stepStickerScale(delta) {
+  const next = Math.min(STICKER_SCALE_MAX, Math.max(STICKER_SCALE_MIN, els.stickerScale.valueAsNumber + delta));
+  els.stickerScale.value = String(next);
+  onStickerSettingsChange();
+}
+
+// Live SVG of one label at its effective size. The SVG text comes only from buildStickerPreviewSvg,
+// which escapes the sample with escapeXml. It is parsed with DOMParser and attached as DOM nodes,
+// so typed numbers can never become markup.
+function updateStickerPreviewSvg(size) {
+  const sample = state.parsed.valid[0] || '0812345678';
+  const svgText = buildStickerPreviewSvg(size.w, size.h, getDigitSize(), sample);
+  const svg = svgText ? new DOMParser().parseFromString(svgText, 'image/svg+xml').documentElement : null;
+  if (!svg || svg.nodeName !== 'svg') {
+    els.stickerPreviewSvg.replaceChildren();
+    return;
+  }
+  // True physical size on screen: the label width in mm, shrinking on narrow screens.
+  svg.style.width = size.w + 'mm';
+  svg.style.maxWidth = '100%';
+  svg.style.height = 'auto';
+  els.stickerPreviewSvg.replaceChildren(document.importNode(svg, true));
 }
 
 // Sheet layout for the chosen size and gap, or null when either is not usable.
@@ -809,13 +941,15 @@ function updateStickerPreview() {
   els.stickerCustomWrap.hidden = getStickerMode() !== 'custom';
   const size = getStickerSize();
   const layout = currentStickerLayout();
+  updateScaleOutput(size);
+  updateStickerPreviewSvg(size);
   let text;
   if (stickerGapMm(size.gap) === null) {
     text = 'ช่องไฟต้องอยู่ระหว่าง 0–10 มม.';
   } else if (!layout) {
-    text = 'ขนาดไม่ถูกต้อง: กว้างอย่างน้อย 20 มม. สูงอย่างน้อย 5 มม. และต้องไม่เกินหน้า A4';
+    text = 'ขนาดไม่ถูกต้อง: กว้างอย่างน้อย 20 มม. สูงอย่างน้อย 5 มม. และต้องไม่เกินหน้า A4 (ลองเลื่อนแถบขนาดดวง)';
   } else {
-    text = layout.cols + ' คอลัมน์ × ' + layout.rows + ' แถว = ' + layout.perPage + ' ดวงต่อแผ่น A4';
+    text = 'ขนาดดวง ' + size.w + ' × ' + size.h + ' มม. · ' + layout.cols + ' คอลัมน์ × ' + layout.rows + ' แถว = ' + layout.perPage + ' ดวงต่อแผ่น A4';
     const count = state.parsed.valid.length;
     if (count > 0) text += ' · ใช้ ' + Math.ceil(count / layout.perPage) + ' แผ่น';
     const style = stickerTextStyle(size.w, size.h, getDigitSize());
@@ -928,6 +1062,10 @@ function init() {
   els.stickerW.addEventListener('input', onStickerSettingsChange);
   els.stickerH.addEventListener('input', onStickerSettingsChange);
   els.stickerGap.addEventListener('input', onStickerSettingsChange);
+  els.stickerScale.addEventListener('input', onStickerSettingsChange);
+  els.stickerScale.addEventListener('change', onStickerSettingsChange);
+  els.stickerScaleDown.addEventListener('click', () => stepStickerScale(-5));
+  els.stickerScaleUp.addEventListener('click', () => stepStickerScale(5));
   document.querySelectorAll('input[name="digit-size"]').forEach((r) => {
     r.addEventListener('change', onStickerSettingsChange);
   });
