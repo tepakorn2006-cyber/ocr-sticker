@@ -191,6 +191,8 @@
   .alert ul { margin: 4px 0 0; padding-left: 1.3em; }
   .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .hint { margin-top: 8px; }
+  .download-row { display: grid; gap: 8px; }
+  .btn-block { width: 100%; }
 
   .footer {
     max-width: 720px;
@@ -253,13 +255,17 @@
       </div>
       <div id="sticker-custom-wrap" class="field-inline" hidden>
         <label for="sticker-w">กว้าง (มม.)</label>
-        <input type="number" id="sticker-w" min="10" step="0.5" value="45" inputmode="decimal">
+        <input type="number" id="sticker-w" min="20" step="0.5" value="45" inputmode="decimal">
         <label for="sticker-h">สูง (มม.)</label>
         <input type="number" id="sticker-h" min="5" step="0.5" value="25" inputmode="decimal">
       </div>
       <div class="field-inline">
+        <label for="sticker-gap">ช่องไฟระหว่างดวง (มม.)</label>
+        <input type="number" id="sticker-gap" min="0" max="10" step="0.5" value="3" inputmode="decimal">
+      </div>
+      <div class="field-inline">
         <p id="sticker-preview" class="muted" role="status" aria-live="polite"></p>
-        <p class="muted hint">ก่อนพิมพ์จริง ลองพิมพ์ลงกระดาษธรรมดา 1 แผ่นแล้วทาบกับบัตรซิม · ตอนสั่งพิมพ์ให้เลือกกระดาษ A4 และขนาด 100% (ไม่ย่อให้พอดีหน้า)</p>
+        <p class="muted hint">ก่อนพิมพ์จริง ลองพิมพ์ลงกระดาษธรรมดา 1 แผ่นแล้วทาบกับบัตรซิม · ตอนสั่งพิมพ์ให้เลือกกระดาษ A4 และขนาด 100% หรือ "ขนาดจริง" (ไม่ย่อให้พอดีหน้า) · ไฟล์ PDF พิมพ์ได้ขนาดตรงกว่า โดยเฉพาะจากมือถือ</p>
       </div>
     </fieldset>
   </section>
@@ -267,13 +273,16 @@
   <!-- STEP 3: build the file -->
   <section class="card" aria-labelledby="h-download">
     <h2 id="h-download">3. สร้างไฟล์</h2>
-    <button type="button" id="download-docx" class="btn btn-primary" aria-describedby="download-reason" disabled>สร้างไฟล์ Word (.docx)</button>
+    <div class="download-row">
+      <button type="button" id="download-pdf" class="btn btn-primary" aria-describedby="download-reason" disabled>สร้างไฟล์ PDF (แนะนำสำหรับพิมพ์)</button>
+      <button type="button" id="download-docx" class="btn btn-block" aria-describedby="download-reason" disabled>สร้างไฟล์ Word (.docx)</button>
+    </div>
     <p id="download-reason" class="muted hint" hidden></p>
   </section>
 </main>
 
 <footer class="footer">
-  <p class="flow">กรอกเบอร์ → เลือกขนาด → สร้างไฟล์ Word → พิมพ์ที่ขนาด 100%</p>
+  <p class="flow">กรอกเบอร์ → เลือกขนาด → สร้างไฟล์ PDF หรือ Word → พิมพ์ที่ขนาด 100%</p>
 </footer>
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -317,12 +326,16 @@ function buildFileStamp(d) {
 
 // Sticker sheets: A4 self-adhesive paper, one number per cell, cut out by hand. Sizes are millimetres.
 const STICKER_PRESETS = { '45x25': { w: 45, h: 25 }, '45x12': { w: 45, h: 12 } };
+// Gap between cells so the user can cut between stickers. Default 3 mm, allowed 0 to 10 mm.
+const STICKER_DEFAULT_GAP_MM = 3;
+const STICKER_MAX_GAP_MM = 10;
 const TWIPS_PER_MM = 56.6929;
 // A4 page and 5 mm margins in twips, matching the sectPr written by buildStickerDocumentXml.
 const STICKER_PAGE_W_TW = 11906;
 const STICKER_PAGE_H_TW = 16838;
 const STICKER_MARGIN_TW = 283;
-// Height of the trailing paragraph after the table; it must fit on the last page too.
+// Height of the paragraph after each table, in twips. Two are reserved per page: the page-break
+// paragraph at the top of every page after the first, and the tail at the end of the document.
 const STICKER_TAIL_TW = 20;
 
 // Floor, not round: a rounded cell could push the grid past the usable page area.
@@ -330,33 +343,60 @@ function stickerCellTwips(mm) {
   return Math.floor(mm * TWIPS_PER_MM);
 }
 
-// Cells per row and per column on one A4 page, or null when the size is not usable.
+// Gap in millimetres: undefined means no gap (0). Anything else must be a finite number from 0 to 10, or null.
+function stickerGapMm(gapMm) {
+  if (gapMm === undefined) return 0;
+  if (!Number.isFinite(gapMm) || gapMm < 0 || gapMm > STICKER_MAX_GAP_MM) return null;
+  return gapMm;
+}
+
+// Cells per row and per column on one A4 page, or null when the size or gap is not usable.
 // Counted in twips with the same cell sizes the document uses, so it matches what Word lays out.
-function computeStickerLayout(labelW, labelH) {
+// n cells with n-1 gaps fit when n * cell + (n - 1) * gap <= usable, which gives the division below.
+function computeStickerLayout(labelW, labelH, gapMm) {
   if (!Number.isFinite(labelW) || !Number.isFinite(labelH)) return null;
-  if (labelW < 10 || labelH < 5) return null;
+  if (labelW < 20 || labelH < 5) return null; // under 20 mm, 10 digits at the 6 pt floor cannot keep 3.5 mm side margins
+  const gap = stickerGapMm(gapMm);
+  if (gap === null) return null;
+  const cellW = stickerCellTwips(labelW);
+  const cellH = stickerCellTwips(labelH);
+  const gapT = stickerCellTwips(gap);
   const usableW = STICKER_PAGE_W_TW - 2 * STICKER_MARGIN_TW;
-  const usableH = STICKER_PAGE_H_TW - 2 * STICKER_MARGIN_TW - STICKER_TAIL_TW;
-  const cols = Math.floor(usableW / stickerCellTwips(labelW));
-  const rows = Math.floor(usableH / stickerCellTwips(labelH));
+  const usableH = STICKER_PAGE_H_TW - 2 * STICKER_MARGIN_TW - 2 * STICKER_TAIL_TW;
+  const cols = Math.floor((usableW + gapT) / (cellW + gapT));
+  const rows = Math.floor((usableH + gapT) / (cellH + gapT));
   if (cols < 1 || rows < 1) return null;
   return { cols, rows, perPage: cols * rows };
 }
 
-// Arial Bold size (half-points) so that 10 digits fit the cell width and height.
-function stickerFontHalfPoints(labelW, labelH) {
-  const emMm = Math.min((labelW - 3) / 5.6, (labelH - 1.5) / 1.25);
+// Font size in points (may be fractional, rounded down to 0.5). 10 digits are 5.56 em wide in Helvetica Bold
+// (0.556 em per digit), and the label keeps 8 mm of horizontal and 3 mm of vertical room.
+function stickerFontPt(labelW, labelH) {
+  const emMm = Math.min((labelW - 8) / 5.56, (labelH - 3) / 1.3);
   const pt = Math.min(emMm / 0.3528, 28);
-  return Math.max(8, Math.floor(pt * 2));
+  return Math.max(6, Math.floor(pt * 2) / 2);
 }
 
-// Word document.xml: one table of equal cells with dashed cut lines. Throws when the size is not usable.
-function buildStickerDocumentXml(values, labelW, labelH) {
-  const layout = computeStickerLayout(labelW, labelH);
+// Word font size in half-points, from the same point size the PDF uses.
+function stickerFontHalfPoints(labelW, labelH) {
+  return Math.round(stickerFontPt(labelW, labelH) * 2);
+}
+
+// Empty paragraph that stays tiny, so a gap cell never grows its row.
+const STICKER_TINY_PARA = '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/>' +
+  '<w:rPr><w:sz w:val="2"/></w:rPr></w:pPr></w:p>';
+// Paragraph that forces the next table onto a new page. It is 20 twips high, like the tail.
+const STICKER_PAGE_BREAK_PARA = '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/>' +
+  '<w:rPr><w:sz w:val="2"/></w:rPr></w:pPr><w:r><w:rPr><w:sz w:val="2"/></w:rPr><w:br w:type="page"/></w:r></w:p>';
+
+// Word document.xml: one table per A4 page. Label cells have dashed cut lines; the gaps between them
+// are empty columns and rows with no borders. Throws when the size or gap is not usable.
+function buildStickerDocumentXml(values, labelW, labelH, gapMm) {
+  const layout = computeStickerLayout(labelW, labelH, gapMm);
   if (!layout) throw new Error('invalid sticker size');
   const head = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
     '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>';
-  // A tiny paragraph after the table keeps Word from adding a blank page.
+  // A tiny paragraph after the last table keeps Word from adding a blank page.
   const tail = '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/>' +
     '<w:rPr><w:sz w:val="2"/></w:rPr></w:pPr></w:p>' +
     '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>' +
@@ -364,42 +404,149 @@ function buildStickerDocumentXml(values, labelW, labelH) {
     '</w:sectPr></w:body></w:document>';
   if (!values || values.length === 0) return head + tail;
 
+  const gap = stickerGapMm(gapMm);
   const cellW = stickerCellTwips(labelW);
   const cellH = stickerCellTwips(labelH);
+  const gapT = stickerCellTwips(gap);
   const hp = stickerFontHalfPoints(labelW, labelH);
+
+  // Grid columns from left to right: label, gap, label, ... (gap columns only when there is a gap).
+  const columns = [];
+  for (let c = 0; c < layout.cols; c++) {
+    if (c > 0 && gapT > 0) columns.push({ label: false, w: gapT });
+    columns.push({ label: true, w: cellW });
+  }
+
+  const cutLine = (side) => '<w:' + side + ' w:val="dashed" w:sz="4" w:space="0" w:color="999999"/>';
+  const cutBorders = '<w:tcBorders>' + ['top', 'left', 'bottom', 'right'].map(cutLine).join('') + '</w:tcBorders>';
   const cellPPr = '<w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr>';
-  const cellXml = (value) => {
+  const labelCellXml = (value) => {
     const run = value == null ? '' :
       '<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:b/><w:bCs/>' +
       '<w:sz w:val="' + hp + '"/><w:szCs w:val="' + hp + '"/></w:rPr>' +
       '<w:t xml:space="preserve">' + escapeXml(value) + '</w:t></w:r>';
-    return '<w:tc><w:tcPr><w:tcW w:w="' + cellW + '" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>' +
-      '<w:p>' + cellPPr + run + '</w:p></w:tc>';
+    return '<w:tc><w:tcPr><w:tcW w:w="' + cellW + '" w:type="dxa"/>' + cutBorders +
+      '<w:vAlign w:val="center"/></w:tcPr><w:p>' + cellPPr + run + '</w:p></w:tc>';
   };
+  const gapCellXml = (w) => '<w:tc><w:tcPr><w:tcW w:w="' + w + '" w:type="dxa"/></w:tcPr>' + STICKER_TINY_PARA + '</w:tc>';
+  const rowXml = (height, cells) => '<w:tr><w:trPr><w:cantSplit/><w:trHeight w:val="' + height +
+    '" w:hRule="exact"/></w:trPr>' + cells.join('') + '</w:tr>';
 
-  const rowCount = Math.ceil(values.length / layout.cols);
-  const rowsXml = [];
-  for (let r = 0; r < rowCount; r++) {
-    const cells = [];
-    for (let c = 0; c < layout.cols; c++) {
-      const i = r * layout.cols + c;
-      cells.push(cellXml(i < values.length ? values[i] : null));
-    }
-    rowsXml.push('<w:tr><w:trPr><w:cantSplit/><w:trHeight w:val="' + cellH + '" w:hRule="exact"/></w:trPr>' +
-      cells.join('') + '</w:tr>');
-  }
-
-  const border = (side) => '<w:' + side + ' w:val="dashed" w:sz="4" w:space="0" w:color="999999"/>';
-  const tblPr = '<w:tblPr><w:tblW w:w="' + (layout.cols * cellW) + '" w:type="dxa"/><w:jc w:val="center"/>' +
-    '<w:tblBorders>' + ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(border).join('') + '</w:tblBorders>' +
+  const noBorder = ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']
+    .map((side) => '<w:' + side + ' w:val="nil"/>').join('');
+  const tblPr = '<w:tblPr><w:tblW w:w="' + (layout.cols * cellW + (layout.cols - 1) * gapT) + '" w:type="dxa"/>' +
+    '<w:jc w:val="center"/><w:tblBorders>' + noBorder + '</w:tblBorders>' +
     '<w:tblLayout w:type="fixed"/>' +
-    '<w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="28" w:type="dxa"/>' +
-    '<w:bottom w:w="0" w:type="dxa"/><w:right w:w="28" w:type="dxa"/></w:tblCellMar></w:tblPr>';
-  let grid = '';
-  for (let c = 0; c < layout.cols; c++) grid += '<w:gridCol w:w="' + cellW + '"/>';
-  return head + '<w:tbl>' + tblPr + '<w:tblGrid>' + grid + '</w:tblGrid>' + rowsXml.join('') + '</w:tbl>' + tail;
+    '<w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/>' +
+    '<w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar></w:tblPr>';
+  const grid = '<w:tblGrid>' + columns.map((col) => '<w:gridCol w:w="' + col.w + '"/>').join('') + '</w:tblGrid>';
+
+  const tables = [];
+  for (let start = 0; start < values.length; start += layout.perPage) {
+    const pageValues = values.slice(start, start + layout.perPage);
+    const rowCount = Math.ceil(pageValues.length / layout.cols);
+    const rowsXml = [];
+    for (let r = 0; r < rowCount; r++) {
+      if (r > 0 && gapT > 0) {
+        rowsXml.push(rowXml(gapT, columns.map((col) => gapCellXml(col.w))));
+      }
+      const cells = [];
+      let c = 0;
+      columns.forEach((col) => {
+        if (!col.label) { cells.push(gapCellXml(col.w)); return; }
+        const i = r * layout.cols + c;
+        cells.push(labelCellXml(i < pageValues.length ? pageValues[i] : null));
+        c++;
+      });
+      rowsXml.push(rowXml(cellH, cells));
+    }
+    tables.push('<w:tbl>' + tblPr + grid + rowsXml.join('') + '</w:tbl>');
+  }
+  return head + tables.join(STICKER_PAGE_BREAK_PARA) + tail;
 }
 
+// PDF of the same sheets, for printing at true size. Base-14 Helvetica-Bold (no font embedding),
+// digits only, pure ASCII so the string length is the byte length.
+const PDF_PAGE_W_PT = 595.28;
+const PDF_PAGE_H_PT = 841.89;
+const PDF_MM_TO_PT = 72 / 25.4;
+const PDF_TOP_MM = 5;
+const PDF_DIGIT_EM = 0.556;
+const PDF_HALF_CAP_EM = 0.359; // half of Helvetica-Bold cap height (0.718 em)
+
+// Text for a PDF string literal: printable ASCII only, with backslash and parentheses escaped.
+function escapePdfString(value) {
+  return String(value)
+    .replace(/[^\x20-\x7E]/g, '?')
+    .replace(/\\/g, '\\\\')
+    .replace(/\(/g, '\\(')
+    .replace(/\)/g, '\\)');
+}
+
+// PDF 1.4 source for the sticker sheets. Throws when the size or gap is not usable.
+// Empty values give a valid one-page blank PDF. Labels without a value get no outline.
+function buildStickerPdf(values, labelW, labelH, gapMm) {
+  const layout = computeStickerLayout(labelW, labelH, gapMm);
+  if (!layout) throw new Error('invalid sticker size');
+  const f = (n) => n.toFixed(2);
+  const gap = stickerGapMm(gapMm);
+  const w = labelW * PDF_MM_TO_PT;
+  const h = labelH * PDF_MM_TO_PT;
+  const g = gap * PDF_MM_TO_PT;
+  const pt = stickerFontPt(labelW, labelH);
+  const gridW = layout.cols * w + (layout.cols - 1) * g;
+  const left = (PDF_PAGE_W_PT - gridW) / 2;
+  const topY = PDF_PAGE_H_PT - PDF_TOP_MM * PDF_MM_TO_PT;
+  const list = values || [];
+  const pageCount = Math.max(1, Math.ceil(list.length / layout.perPage));
+
+  const contents = [];
+  for (let p = 0; p < pageCount; p++) {
+    const ops = [];
+    list.slice(p * layout.perPage, (p + 1) * layout.perPage).forEach((value, i) => {
+      const text = value == null ? '' : String(value);
+      if (text === '') return;
+      const x = left + (i % layout.cols) * (w + g);
+      const y = topY - Math.floor(i / layout.cols) * (h + g) - h;
+      ops.push('0.6 G 0.6 w [2 2] 0 d ' + f(x) + ' ' + f(y) + ' ' + f(w) + ' ' + f(h) + ' re S');
+      const textW = PDF_DIGIT_EM * pt * text.length;
+      const tx = x + (w - textW) / 2;
+      const ty = y + h / 2 - PDF_HALF_CAP_EM * pt;
+      ops.push('0 g BT /F1 ' + f(pt) + ' Tf ' + f(tx) + ' ' + f(ty) + ' Td (' + escapePdfString(text) + ') Tj ET');
+    });
+    contents.push(ops.join('\n'));
+  }
+
+  // Object 1 Catalog, 2 Pages, 3 Font; then for each page a Page object and its content stream.
+  const objectCount = 3 + 2 * pageCount;
+  const bodies = [];
+  bodies[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+  const kids = [];
+  for (let p = 0; p < pageCount; p++) kids.push((4 + 2 * p) + ' 0 R');
+  bodies[2] = '<< /Type /Pages /Kids [' + kids.join(' ') + '] /Count ' + pageCount + ' >>';
+  bodies[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+  for (let p = 0; p < pageCount; p++) {
+    const pageId = 4 + 2 * p;
+    const contentId = 5 + 2 * p;
+    bodies[pageId] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] ' +
+      '/Resources << /Font << /F1 3 0 R >> >> /Contents ' + contentId + ' 0 R >>';
+    bodies[contentId] = '<< /Length ' + contents[p].length + ' >>\nstream\n' + contents[p] + '\nendstream';
+  }
+
+  let out = '%PDF-1.4\n';
+  const offsets = [];
+  for (let id = 1; id <= objectCount; id++) {
+    offsets[id] = out.length;
+    out += id + ' 0 obj\n' + bodies[id] + '\nendobj\n';
+  }
+  const xrefAt = out.length;
+  let xref = 'xref\n0 ' + (objectCount + 1) + '\n0000000000 65535 f \n';
+  for (let id = 1; id <= objectCount; id++) {
+    xref += String(offsets[id]).padStart(10, '0') + ' 00000 n \n';
+  }
+  out += xref + 'trailer\n<< /Size ' + (objectCount + 1) + ' /Root 1 0 R >>\nstartxref\n' + xrefAt + '\n%%EOF\n';
+  return out;
+}
 
 // Phone numbers typed or pasted by hand, one per line. Spaces, tabs, '-', '.', '(' and ')' are ignored.
 // Valid numbers are kept as strings (leading zeros matter). Duplicates stay in valid; they are only reported.
@@ -442,7 +589,9 @@ const els = {
   stickerCustomWrap: $('#sticker-custom-wrap'),
   stickerW: $('#sticker-w'),
   stickerH: $('#sticker-h'),
+  stickerGap: $('#sticker-gap'),
   stickerPreview: $('#sticker-preview'),
+  downloadPdf: $('#download-pdf'),
   downloadDocx: $('#download-docx'),
   downloadReason: $('#download-reason'),
   toast: $('#toast')
@@ -476,7 +625,7 @@ function saveDraftSoon() {
 }
 
 function saveSizeSettings() {
-  storageSet(SIZE_KEY, JSON.stringify({ mode: getStickerMode(), w: els.stickerW.value, h: els.stickerH.value }));
+  storageSet(SIZE_KEY, JSON.stringify({ mode: getStickerMode(), w: els.stickerW.value, h: els.stickerH.value, gap: els.stickerGap.value }));
 }
 
 function restoreSettings() {
@@ -491,6 +640,7 @@ function restoreSettings() {
   if (radio) radio.checked = true;
   if (typeof saved.w === 'string') els.stickerW.value = saved.w;
   if (typeof saved.h === 'string') els.stickerH.value = saved.h;
+  if (typeof saved.gap === 'string') els.stickerGap.value = saved.gap;
 }
 
 /* ---------- helpers ---------- */
@@ -576,30 +726,38 @@ function onClearClick() {
 
 /* ---------- step 2: sticker size ---------- */
 
-// Sticker size in millimetres {w, h}: a preset, or the custom inputs (NaN when empty or not a number).
+// Sticker size in millimetres {w, h, gap}: a preset, or the custom inputs (NaN when empty or not a number).
 function getStickerMode() {
   const checked = document.querySelector('input[name="sticker"]:checked');
   return checked ? checked.value : '45x25';
 }
 
-function getStickerSize() {
-  const mode = getStickerMode();
-  if (mode === 'custom') return { w: els.stickerW.valueAsNumber, h: els.stickerH.valueAsNumber };
-  return STICKER_PRESETS[mode] || STICKER_PRESETS['45x25'];
+// Gap between cells in millimetres from its input (NaN when empty or not a number).
+function getStickerGap() {
+  return els.stickerGap.valueAsNumber;
 }
 
-// Sheet layout for the chosen size, or null when the size is not usable.
+function getStickerSize() {
+  const mode = getStickerMode();
+  if (mode === 'custom') return { w: els.stickerW.valueAsNumber, h: els.stickerH.valueAsNumber, gap: getStickerGap() };
+  return Object.assign({}, STICKER_PRESETS[mode] || STICKER_PRESETS['45x25'], { gap: getStickerGap() });
+}
+
+// Sheet layout for the chosen size and gap, or null when either is not usable.
 function currentStickerLayout() {
   const size = getStickerSize();
-  return computeStickerLayout(size.w, size.h);
+  return computeStickerLayout(size.w, size.h, size.gap);
 }
 
 function updateStickerPreview() {
   els.stickerCustomWrap.hidden = getStickerMode() !== 'custom';
+  const size = getStickerSize();
   const layout = currentStickerLayout();
   let text;
-  if (!layout) {
-    text = 'ขนาดไม่ถูกต้อง: กว้างอย่างน้อย 10 มม. สูงอย่างน้อย 5 มม. และต้องไม่เกินหน้า A4';
+  if (stickerGapMm(size.gap) === null) {
+    text = 'ช่องไฟต้องอยู่ระหว่าง 0–10 มม.';
+  } else if (!layout) {
+    text = 'ขนาดไม่ถูกต้อง: กว้างอย่างน้อย 20 มม. สูงอย่างน้อย 5 มม. และต้องไม่เกินหน้า A4';
   } else {
     text = layout.cols + ' คอลัมน์ × ' + layout.rows + ' แถว = ' + layout.perPage + ' ดวงต่อแผ่น A4';
     const count = state.parsed.valid.length;
@@ -619,17 +777,43 @@ function onStickerSettingsChange() {
 
 function updateDownloadButton() {
   const count = state.parsed.valid.length;
+  els.downloadPdf.disabled = count === 0 || currentStickerLayout() === null;
   els.downloadDocx.disabled = count === 0 || currentStickerLayout() === null;
   let reason = '';
   if (count === 0) reason = 'กรอกเบอร์อย่างน้อย 1 เบอร์';
+  else if (stickerGapMm(getStickerSize().gap) === null) reason = 'ช่องไฟต้องอยู่ระหว่าง 0–10 มม.';
   else if (currentStickerLayout() === null) reason = 'ขนาดสติกเกอร์ไม่ถูกต้อง';
   els.downloadReason.textContent = reason;
   els.downloadReason.hidden = !reason;
 }
 
+// Saves a file: through the downloads capability inside claude.ai, or a plain download link elsewhere.
+async function saveBlob(blob, filename, count) {
+  // Inside a claude.ai artifact, plain <a download> is blocked; use the downloads capability.
+  const downloads = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+  if (downloads) {
+    try {
+      await downloads.save({ filename, data: blob });
+      toast('สร้างไฟล์ ' + count + ' เบอร์แล้ว');
+    } catch (e) {
+      if (e && e.code !== 'declined') toast('ดาวน์โหลดไม่สำเร็จ (' + (e.code || 'error') + ')');
+    }
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('สร้างไฟล์ ' + count + ' เบอร์แล้ว');
+}
+
 async function downloadDocx(values) {
   const size = getStickerSize();
-  if (!computeStickerLayout(size.w, size.h)) {
+  if (!computeStickerLayout(size.w, size.h, size.gap)) {
     toast('ขนาดสติกเกอร์ไม่ถูกต้อง');
     return;
   }
@@ -642,31 +826,29 @@ async function downloadDocx(values) {
     const zip = new JSZip();
     zip.file('[Content_Types].xml', CONTENT_TYPES_XML);
     zip.file('_rels/.rels', ROOT_RELS_XML);
-    zip.file('word/document.xml', buildStickerDocumentXml(values, size.w, size.h));
+    zip.file('word/document.xml', buildStickerDocumentXml(values, size.w, size.h, size.gap));
     const blob = await zip.generateAsync({ type: 'blob', mimeType: DOCX_MIME });
-    const filename = 'stickers-' + buildFileStamp(new Date()) + '.docx';
-    // Inside a claude.ai artifact, plain <a download> is blocked; use the downloads capability.
-    const downloads = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
-    if (downloads) {
-      try {
-        await downloads.save({ filename, data: blob });
-        toast('สร้างไฟล์ ' + values.length + ' เบอร์แล้ว');
-      } catch (e) {
-        if (e && e.code !== 'declined') toast('ดาวน์โหลดไม่สำเร็จ (' + (e.code || 'error') + ')');
-      }
-      return;
-    }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast('สร้างไฟล์ ' + values.length + ' เบอร์แล้ว');
+    await saveBlob(blob, 'stickers-' + buildFileStamp(new Date()) + '.docx', values.length);
   } catch (err) {
     toast('สร้างไฟล์ Word ไม่สำเร็จ');
+  }
+}
+
+// PDF of the same sheets: prints at true size more reliably than Word, especially from phones.
+async function downloadPdf(values) {
+  const size = getStickerSize();
+  if (!computeStickerLayout(size.w, size.h, size.gap)) {
+    toast('ขนาดสติกเกอร์ไม่ถูกต้อง');
+    return;
+  }
+  if (values.length === 0) return;
+  try {
+    const pdf = buildStickerPdf(values, size.w, size.h, size.gap);
+    // The PDF source is pure ASCII, so the string is byte-exact as a Blob.
+    const blob = new Blob([pdf], { type: 'application/pdf' });
+    await saveBlob(blob, 'stickers-' + buildFileStamp(new Date()) + '.pdf', values.length);
+  } catch (err) {
+    toast('สร้างไฟล์ PDF ไม่สำเร็จ');
   }
 }
 
@@ -687,6 +869,8 @@ function init() {
   });
   els.stickerW.addEventListener('input', onStickerSettingsChange);
   els.stickerH.addEventListener('input', onStickerSettingsChange);
+  els.stickerGap.addEventListener('input', onStickerSettingsChange);
+  els.downloadPdf.addEventListener('click', () => downloadPdf(state.parsed.valid));
   els.downloadDocx.addEventListener('click', () => downloadDocx(state.parsed.valid));
   // Keep the draft if the tab closes within the debounce window.
   window.addEventListener('pagehide', saveDraftNow);
