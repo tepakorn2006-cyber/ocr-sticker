@@ -15,7 +15,26 @@ function state_(claims, extra) {
   return out;
 }
 
-function doGet() {
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// JSON API for the page hosted on GitHub Pages.
+// GET ?api=state -> state.  POST body (text/plain) {action:'claim'|'release', roleId, name} -> state.
+function doPost(e) {
+  let body = {};
+  try { body = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (err) {}
+  try {
+    if (body.action === 'claim') return json_(claim(String(body.roleId || ''), body.name));
+    if (body.action === 'release') return json_(release(String(body.roleId || ''), body.name));
+    return json_(state_(read_(), { ok: false, msg: 'คำสั่งไม่ถูกต้อง' }));
+  } catch (err) {
+    return json_(state_(read_(), { ok: false, msg: 'ระบบไม่ว่าง ลองกดใหม่อีกครั้ง' }));
+  }
+}
+
+function doGet(e) {
+  if (e && e.parameter && e.parameter.api === 'state') return json_(getState());
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('แบ่งหน้าที่ทีมหนัง')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
