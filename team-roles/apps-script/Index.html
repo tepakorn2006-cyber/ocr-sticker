@@ -111,6 +111,12 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 7vw, 
   border: 2.5px solid var(--red); border-radius: 6px; padding: 2px 10px; background: transparent; transform: rotate(-6deg); opacity: .9; max-width: 68%;
   font-size: 14px; line-height: 1.35; text-align: center; overflow-wrap: anywhere; }
 .taken .body { padding-bottom: 54px; }
+.yours .body { padding-bottom: 54px; }
+.stamp { position: absolute; right: 14px; bottom: 14px; font-family: var(--display); font-size: 14px; line-height: 1.35; color: #1d6f62;
+  border: 2.5px solid #1d6f62; border-radius: 6px; padding: 2px 10px; transform: rotate(-6deg); max-width: 68%; text-align: center; overflow-wrap: anywhere; }
+.need-name input { border-color: var(--red) !important; box-shadow: 0 0 0 4px rgba(210,69,47,.25) !important; animation: shake .35s; }
+@keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+.free.noname .act { color: var(--ticket-muted); }
 .taken .who::before { content: "จองแล้วโดย"; font-size: 12px; color: var(--ticket-muted); }
 
 /* Cast list */
@@ -154,7 +160,7 @@ footer { color: var(--text-muted); font-size: 13px; text-align: center; }
 .rules button:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
 .rules-link { justify-self: start; font: inherit; font-family: var(--label); font-size: 13px; color: var(--gold-soft); background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }
 @media (max-width: 420px) { .grid { grid-template-columns: 1fr; } }
-@media (prefers-reduced-motion: reduce) { .bulbs i { animation: none; } .role, .frames span { transition: none; } .role:hover:not(:disabled) { transform: none; } .rules { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .bulbs i { animation: none; } .role, .frames span { transition: none; } .role:hover:not(:disabled) { transform: none; } .rules { animation: none; } .need-name input { animation: none; } }
 </style>
 </head>
 <body>
@@ -291,8 +297,11 @@ function render() {
     const who = document.createElement("span"); who.className = "who";
     const pill = document.createElement("span"); pill.className = "pill";
     const act = document.createElement("span"); act.className = "act";
-    if (state === "free") { pill.textContent = "ว่าง"; act.textContent = busy.has(r.id) ? "กำลังบันทึก…" : "กดเพื่อจอง"; }
-    else if (state === "yours") { pill.textContent = "ของฉัน"; act.textContent = busy.has(r.id) ? "กำลังบันทึก…" : "กดเพื่อคืนหน้าที่"; }
+    if (state === "free") { pill.textContent = "ว่าง"; act.textContent = busy.has(r.id) ? "กำลังบันทึก…" : myName() ? "กดเพื่อจอง" : "พิมพ์ชื่อด้านบนก่อนจอง"; if (!myName()) b.classList.add("noname"); }
+    else if (state === "yours") {
+      pill.textContent = "ของฉัน"; act.textContent = busy.has(r.id) ? "กำลังบันทึก…" : "กดเพื่อคืนหน้าที่";
+      const stamp = document.createElement("span"); stamp.className = "stamp"; stamp.textContent = c.name; who.append(stamp);
+    }
     else { pill.textContent = c.name; }
     who.append(pill, act);
     body.append(t, en, mid, who);
@@ -340,7 +349,14 @@ function render() {
 
 async function act(fn, id) {
   const me = myName();
-  if (!me) { toast("พิมพ์ชื่อจริงและนามสกุลให้ครบก่อน"); (clean(els.first.value) ? els.last : els.first).focus(); return; }
+  if (!me) {
+    toast("พิมพ์ชื่อจริงและนามสกุลให้ครบก่อน แล้วค่อยกดจอง");
+    const slip = document.querySelector(".slip");
+    slip.classList.remove("need-name"); void slip.offsetWidth; slip.classList.add("need-name");
+    slip.scrollIntoView({ behavior: "smooth", block: "center" });
+    (clean(els.first.value) ? els.last : els.first).focus({ preventScroll: true });
+    return;
+  }
   busy.add(id); render();
   try {
     const res = await call(fn, id, me);
@@ -368,6 +384,7 @@ els.grid.addEventListener("click", (ev) => {
 });
 let nameTimer;
 [els.first, els.last].forEach((el) => el.addEventListener("input", () => {
+  if (myName()) document.querySelector(".slip").classList.remove("need-name");
   render(); clearTimeout(nameTimer);
   nameTimer = setTimeout(() => store(false, { first: clean(els.first.value), last: clean(els.last.value) }), 400);
 }));
