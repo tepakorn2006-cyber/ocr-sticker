@@ -25,3 +25,9 @@
 - ปลดหน้าที่เดียว: แก้ `'logline'` ใน `releaseRoleExample` เป็นรหัสหน้าที่ แล้ว Run `releaseRoleExample`
   รหัส: theme, premise, logline, intention, target, budget, plot, concept, mood, story, music, trailer, timeline, crew
 - ถ้าแก้โค้ดภายหลัง ต้องกด Deploy → **Manage deployments** → ✏️ → Version: **New version** → Deploy (ลิงก์เดิมใช้ต่อได้)
+
+## เวลาปิดรับ
+
+ปิดรับตอนเที่ยงคืน (00:00 น. วันที่ 11 พ.ย. 2026 เวลาไทย) หลังจากนั้นจองหรือคืนหน้าที่ไม่ได้ แต่ยังเปิดดูรายชื่อได้
+ถ้าต้องการขยายเวลา ให้แก้บรรทัด `const DEADLINE = new Date('2026-11-11T00:00:00+07:00')` ใน Code.gs
+แล้ว Deploy เวอร์ชันใหม่ (Manage deployments → ✏️ → New version → Deploy)

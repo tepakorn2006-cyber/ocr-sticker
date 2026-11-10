@@ -72,6 +72,14 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 7vw, 
 .mine { color: var(--text-muted); font-size: 14px; }
 .mine b { color: var(--gold-soft); font-weight: 600; }
 .stats { display: none; }
+.clock { display: flex; align-items: center; justify-content: center; gap: 10px 14px; flex-wrap: wrap; padding: 12px 16px; border-radius: 12px;
+  background: rgba(242,182,50,.10); border: 1px solid rgba(242,182,50,.35); font-family: var(--label); text-align: center; }
+.clock .lbl { color: var(--gold-soft); font-size: 14px; }
+.clock .time { font-family: var(--display); color: var(--gold); font-size: 26px; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.clock.soon { border-color: var(--red); background: rgba(210,69,47,.14); }
+.clock.soon .time { color: #ff8a73; }
+.clock.closed { background: rgba(210,69,47,.16); border-color: var(--red); }
+.clock.closed .lbl { color: #ffb4a4; font-size: 15px; font-weight: 600; }
 .status { font-size: 14px; padding: 10px 14px; border-radius: 10px; background: rgba(242,182,50,.12); color: var(--gold-soft); border: 1px solid rgba(242,182,50,.3); }
 
 /* Tickets */
@@ -173,6 +181,8 @@ footer { color: var(--text-muted); font-size: 13px; text-align: center; }
     <span class="date">นำเสนอในชั้นเรียน 16–20 พ.ย.</span>
   </header>
 
+  <div class="clock" id="clock" hidden><span class="lbl" id="clock-lbl"></span><span class="time" id="clock-time"></span></div>
+
   <div class="strip" aria-label="ความคืบหน้า">
     <div class="frames" id="frames"></div>
     <div class="strip-label" id="strip-label"></div>
@@ -213,7 +223,8 @@ footer { color: var(--text-muted); font-size: 13px; text-align: center; }
       <li><b>อยากเปลี่ยน</b> ให้กดตั๋วของตัวเองเพื่อคืน แล้วกดเลือกใบใหม่</li>
       <li><b>พิมพ์ชื่อให้เหมือนเดิมทุกครั้ง</b> ถ้าพิมพ์ต่างไป ระบบจะคิดว่าเป็นอีกคน และคืนหน้าที่เดิมไม่ได้</li>
       <li><b>ห้ามใช้ชื่อเพื่อน</b>ไปจองหรือคืนหน้าที่แทน ถ้ามีปัญหาให้ถามคนที่ส่งลิงก์เว็บนี้ให้ หรือทักส่วนตัวได้เลย</li>
-      <li>เลือกให้เสร็จก่อนนัดประชุมกลุ่ม แล้วนำเสนอในชั้นเรียน <b>16–20 พ.ย.</b></li>
+      <li><b>ปิดรับเที่ยงคืน</b> (00:00 น. คืนวันที่ 10 ต่อเช้าวันที่ 11 พ.ย.) หลังจากนั้นจะจองหรือคืนหน้าที่ไม่ได้ แต่ยังเปิดดูรายชื่อได้</li>
+      <li>นำเสนอในชั้นเรียน <b>16–20 พ.ย.</b></li>
     </ol>
     <div class="foot">
       <button type="button" id="rules-ok">ตกลง ไปเลือกหน้าที่</button>
@@ -243,6 +254,8 @@ const $ = (id) => document.getElementById(id);
 const els = { first: $("first"), last: $("last"), mine: $("mine"), stats: $("stats"), status: $("status"), grid: $("grid"), people: $("people"), toast: $("toast") };
 
 let claims = {};
+let deadline = 0, clockOffset = 0;
+const closed = () => deadline && Date.now() + clockOffset >= deadline;
 let loaded = false;
 const busy = new Set();
 
@@ -270,7 +283,9 @@ function toast(msg) {
 }
 function showStatus(msg) { els.status.textContent = msg; els.status.hidden = !msg; }
 
-function setClaims(next) {
+function setClaims(res) {
+  if (res && typeof res.deadline === "number") { deadline = res.deadline; if (typeof res.now === "number") clockOffset = res.now - Date.now(); }
+  const next = res && res.claims ? res.claims : {};
   const clean = {};
   Object.keys(next || {}).forEach((id) => {
     const v = next[id];
@@ -286,7 +301,7 @@ function render() {
     const state = !c ? "free" : isMine(c) ? "yours" : "taken";
     const b = document.createElement("button");
     b.type = "button"; b.className = "role " + state; b.dataset.id = r.id;
-    if (state === "taken" || busy.has(r.id) || !loaded) b.disabled = true;
+    if (state === "taken" || busy.has(r.id) || !loaded || closed()) b.disabled = true;
     const stub = document.createElement("span"); stub.className = "stub";
     const no = document.createElement("span"); no.className = "no"; no.textContent = String(i + 1).padStart(2, "0"); stub.append(no);
     const body = document.createElement("span"); body.className = "body";
@@ -297,9 +312,9 @@ function render() {
     const who = document.createElement("span"); who.className = "who";
     const pill = document.createElement("span"); pill.className = "pill";
     const act = document.createElement("span"); act.className = "act";
-    if (state === "free") { pill.textContent = "ว่าง"; act.textContent = busy.has(r.id) ? "กำลังบันทึก…" : myName() ? "กดเพื่อจอง" : "พิมพ์ชื่อด้านบนก่อนจอง"; if (!myName()) b.classList.add("noname"); }
+    if (state === "free") { pill.textContent = "ว่าง"; act.textContent = closed() ? "ปิดรับแล้ว" : busy.has(r.id) ? "กำลังบันทึก…" : myName() ? "กดเพื่อจอง" : "พิมพ์ชื่อด้านบนก่อนจอง"; if (!myName() || closed()) b.classList.add("noname"); }
     else if (state === "yours") {
-      pill.textContent = "ของฉัน"; act.textContent = busy.has(r.id) ? "กำลังบันทึก…" : "กดเพื่อคืนหน้าที่";
+      pill.textContent = "ของฉัน"; act.textContent = closed() ? "" : busy.has(r.id) ? "กำลังบันทึก…" : "กดเพื่อคืนหน้าที่";
       const stamp = document.createElement("span"); stamp.className = "stamp"; stamp.textContent = c.name; who.append(stamp);
     }
     else { pill.textContent = c.name; }
@@ -349,6 +364,7 @@ function render() {
 
 async function act(fn, id) {
   const me = myName();
+  if (closed()) { toast("ปิดรับแล้ว ถ้าต้องการเปลี่ยน ให้ถามคนที่ส่งลิงก์เว็บนี้ให้"); return; }
   if (!me) {
     toast("พิมพ์ชื่อจริงและนามสกุลให้ครบก่อน แล้วค่อยกดจอง");
     const slip = document.querySelector(".slip");
@@ -360,7 +376,7 @@ async function act(fn, id) {
   busy.add(id); render();
   try {
     const res = await call(fn, id, me);
-    setClaims(res.claims);
+    setClaims(res);
     const role = ROLES.find((r) => r.id === id).t;
     toast(res.ok ? (fn === "claim" ? "จองแล้ว: " : "คืนหน้าที่แล้ว: ") + role : res.msg);
   } catch (e) { toast("บันทึกไม่สำเร็จ ลองกดใหม่อีกครั้ง"); }
@@ -370,12 +386,30 @@ async function act(fn, id) {
 async function refresh() {
   try {
     setClaims(await call("getState"));
-    loaded = true; showStatus("");
+    loaded = true; showStatus(""); tick();
   } catch (e) {
     if (!loaded) showStatus("ยังโหลดข้อมูลไม่ได้ ตรวจอินเทอร์เน็ตแล้วรีเฟรชหน้านี้");
   }
   if (!busy.size) render();
 }
+
+let wasClosed = false;
+function tick() {
+  const box = $("clock");
+  if (!deadline) { box.hidden = true; return; }
+  box.hidden = false;
+  const left = deadline - (Date.now() + clockOffset);
+  if (left <= 0) {
+    box.className = "clock closed"; $("clock-lbl").textContent = "ปิดรับแล้ว ดูรายชื่อได้อย่างเดียว ถ้าต้องการเปลี่ยน ให้ถามคนที่ส่งลิงก์เว็บนี้ให้"; $("clock-time").textContent = "";
+    if (!wasClosed) { wasClosed = true; render(); }
+    return;
+  }
+  const sec = Math.floor(left / 1000), h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), sc = sec % 60;
+  box.className = "clock" + (left < 3600000 ? " soon" : "");
+  $("clock-lbl").textContent = "ปิดรับตอนเที่ยงคืน เหลือเวลาอีก";
+  $("clock-time").textContent = (h ? h + " ชม. " : "") + String(m).padStart(2, "0") + " นาที " + String(sc).padStart(2, "0") + " วิ";
+}
+setInterval(tick, 1000);
 
 els.grid.addEventListener("click", (ev) => {
   const b = ev.target.closest(".role"); if (!b || b.disabled) return;
