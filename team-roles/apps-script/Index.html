@@ -5,138 +5,164 @@
 <meta charset="utf-8">
 <title>แบ่งหน้าที่ทีมหนัง</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chonburi&family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
 <style>
-/* Layout: a call-sheet. Name slip on top, then a grid of role "slates"; each slate is free, yours, or taken. */
+/* Layout: a cinema lobby. Marquee title, a reel that fills as roles are taken, and each role is a ticket that gets stamped with its owner's name. Single dark world on purpose. */
 :root {
-  --bg: #eef3f1;
-  --surface: #ffffff;
-  --ink: #15302b;
-  --muted: #5a716c;
-  --line: #cfdcd8;
-  --teal: #1f6b5f;
-  --teal-soft: #dcece8;
-  --amber: #e2a924;
-  --amber-ink: #5b3f00;
-  --amber-soft: #fbf0d3;
-  --taken: #eef1f0;
-  --danger: #b0412e;
-  --font-display: "Bai Jamjuree", "IBM Plex Sans Thai", system-ui, sans-serif;
-  --font-body: "IBM Plex Sans Thai", system-ui, sans-serif;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0f1a18; --surface: #16241f; --ink: #e5efec; --muted: #93aaa4; --line: #2a3d38;
-    --teal: #5fbfae; --teal-soft: #1b3832; --amber: #f0bd45; --amber-ink: #f6d585; --amber-soft: #33290f;
-    --taken: #1a2522; --danger: #ef8a76; color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0f1a18; --surface: #16241f; --ink: #e5efec; --muted: #93aaa4; --line: #2a3d38;
-  --teal: #5fbfae; --teal-soft: #1b3832; --amber: #f0bd45; --amber-ink: #f6d585; --amber-soft: #33290f;
-  --taken: #1a2522; --danger: #ef8a76; color-scheme: dark;
+  --night: #0c1a19;
+  --night-2: #12262a;
+  --ticket: #f6efdf;
+  --ticket-ink: #2a2118;
+  --ticket-muted: #7a6b57;
+  --gold: #f2b632;
+  --gold-soft: #f8d77d;
+  --teal: #4fb3a2;
+  --red: #d2452f;
+  --text: #f1ece2;
+  --text-muted: #a7b8b3;
+  --display: "Chonburi", "Bai Jamjuree", serif;
+  --label: "Bai Jamjuree", "IBM Plex Sans Thai", system-ui, sans-serif;
+  --body: "IBM Plex Sans Thai", system-ui, sans-serif;
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
+html { background: var(--night); }
 body {
-  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 24px 48px;
+  margin: 0; min-height: 100vh; color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.55;
+  background:
+    radial-gradient(1000px 500px at 50% -120px, rgba(242,182,50,.20), transparent 70%),
+    radial-gradient(700px 400px at 100% 100%, rgba(79,179,162,.12), transparent 70%),
+    var(--night);
+  padding: 28px max(16px, env(safe-area-inset-right, 0px)) 56px max(16px, env(safe-area-inset-left, 0px));
 }
-.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 22px; }
-header { display: grid; gap: 6px; }
-.eyebrow { font-family: var(--font-display); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--teal); font-weight: 600; }
-h1 { font-family: var(--font-display); font-size: clamp(26px, 5vw, 36px); line-height: 1.15; margin: 0; text-wrap: balance; }
-.sub { color: var(--muted); margin: 0; max-width: 62ch; }
-.stripe { height: 10px; border-radius: 3px; background: repeating-linear-gradient(-45deg, var(--ink) 0 12px, var(--bg) 12px 24px); opacity: .85; }
+.wrap { max-width: 1060px; margin: 0 auto; display: grid; gap: 26px; }
 
-.slip { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 12px; }
-.slip label { font-weight: 600; font-family: var(--font-display); }
-.name-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-#name { flex: 1 1 220px; min-width: 0; font: inherit; font-size: 17px; padding: 10px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--bg); color: var(--ink); }
-#name:focus-visible { outline: 3px solid var(--amber); outline-offset: 1px; border-color: var(--teal); }
-.mine { color: var(--muted); font-size: 14px; }
-.mine b { color: var(--ink); }
+/* Marquee */
+.marquee { text-align: center; display: grid; gap: 10px; justify-items: center; padding-top: 8px; }
+.bulbs { display: flex; gap: 10px; }
+.bulbs i { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px 2px rgba(242,182,50,.7); animation: blink 1.6s infinite; }
+.bulbs i:nth-child(2n) { animation-delay: .8s; }
+@keyframes blink { 50% { opacity: .35; box-shadow: none; } }
+.eyebrow { font-family: var(--label); font-weight: 600; letter-spacing: .28em; font-size: 12px; color: var(--gold-soft); text-transform: uppercase; }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 7vw, 54px); line-height: 1.2; margin: 0; color: var(--gold);
+  text-shadow: 0 0 24px rgba(242,182,50,.35), 0 2px 0 #6b4a05; text-wrap: balance; }
+.sub { margin: 0; color: var(--text-muted); max-width: 54ch; text-wrap: balance; }
+.date { font-family: var(--label); font-size: 13px; border: 1px solid rgba(242,182,50,.45); color: var(--gold-soft); padding: 3px 14px; border-radius: 99px; }
 
-.stats { display: flex; gap: 10px 22px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
-.stats strong { font-family: var(--font-display); font-size: 20px; color: var(--ink); font-variant-numeric: tabular-nums; margin-right: 4px; }
+/* Film strip progress */
+.strip { background: #050c0c; border-radius: 6px; padding: 10px 10px; position: relative;
+  --perf: radial-gradient(circle, transparent 0 0, transparent 0) ; }
+.strip::before, .strip::after { content: ""; position: absolute; left: 8px; right: 8px; height: 5px;
+  background: repeating-linear-gradient(90deg, rgba(241,236,226,.55) 0 8px, transparent 8px 18px); border-radius: 2px; }
+.strip::before { top: 3px; } .strip::after { bottom: 3px; }
+.frames { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; margin: 6px 0; }
+.frames span { height: 22px; border-radius: 2px; background: #1c2f30; transition: background .3s; }
+.frames span.on { background: linear-gradient(180deg, var(--gold-soft), var(--gold)); }
+.strip-label { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; font-family: var(--label); font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+.strip-label b { color: var(--text); font-variant-numeric: tabular-nums; font-size: 16px; }
 
-.status { font-size: 14px; padding: 10px 12px; border-radius: 8px; background: var(--amber-soft); color: var(--amber-ink); }
+/* Name card */
+.slip { background: var(--night-2); border: 1px solid rgba(241,236,226,.10); border-radius: 14px; padding: 18px; display: grid; gap: 10px; }
+.slip label { font-family: var(--label); font-weight: 600; font-size: 14px; letter-spacing: .04em; color: var(--gold-soft); }
+#name { width: 100%; font: inherit; font-family: var(--label); font-size: 20px; font-weight: 600; padding: 12px 14px; border-radius: 10px;
+  border: 1.5px solid rgba(241,236,226,.18); background: #0a1617; color: var(--text); }
+#name::placeholder { color: #5f7470; font-weight: 500; }
+#name:focus-visible { outline: none; border-color: var(--gold); box-shadow: 0 0 0 4px rgba(242,182,50,.2); }
+.mine { color: var(--text-muted); font-size: 14px; }
+.mine b { color: var(--gold-soft); font-weight: 600; }
+.stats { display: none; }
+.status { font-size: 14px; padding: 10px 14px; border-radius: 10px; background: rgba(242,182,50,.12); color: var(--gold-soft); border: 1px solid rgba(242,182,50,.3); }
 
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+/* Tickets */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
 .role {
-  position: relative; text-align: left; font: inherit; color: inherit; cursor: pointer;
-  background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 14px 14px 12px;
-  display: grid; grid-template-rows: auto auto 1fr auto; gap: 4px; min-width: 0; min-height: 132px;
-  transition: border-color .15s, transform .15s;
+  --notch: var(--night);
+  position: relative; display: grid; grid-template-columns: 64px 1fr; text-align: left; font: inherit; color: var(--ticket-ink);
+  background: var(--ticket); border: 0; border-radius: 10px; padding: 0; cursor: pointer; min-height: 128px; overflow: hidden;
+  -webkit-mask: radial-gradient(circle 9px at 64px 0, transparent 98%, #000) top/100% 51% no-repeat, radial-gradient(circle 9px at 64px 100%, transparent 98%, #000) bottom/100% 51% no-repeat;
+          mask: radial-gradient(circle 9px at 64px 0, transparent 98%, #000) top/100% 51% no-repeat, radial-gradient(circle 9px at 64px 100%, transparent 98%, #000) bottom/100% 51% no-repeat;
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s;
 }
-.role:hover:not(:disabled) { border-color: var(--teal); transform: translateY(-1px); }
-.role:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
-.role .no { font-family: var(--font-display); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: .06em; }
-.role .t { font-family: var(--font-display); font-weight: 600; font-size: 16px; line-height: 1.3; }
-.role .en { font-size: 12px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
-.role .note { font-size: 13px; color: var(--muted); }
-.role .who { margin-top: 8px; font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.pill { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 99px; white-space: nowrap; }
-.free .pill { background: var(--teal-soft); color: var(--teal); }
-.yours { border-color: var(--amber); background: var(--amber-soft); }
-.yours .pill { background: var(--amber); color: #2b1d00; }
-.taken { background: var(--taken); cursor: not-allowed; }
-.taken .pill { background: var(--line); color: var(--ink); }
-.taken .t, .taken .en { opacity: .7; }
-.role .act { font-size: 13px; color: var(--teal); font-weight: 600; }
-.yours .act { color: var(--danger); }
-.ai { font-size: 11px; font-weight: 600; letter-spacing: .06em; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; margin-left: 6px; vertical-align: 2px; color: var(--muted); }
+.role:hover:not(:disabled) { transform: translateY(-3px) rotate(-.4deg); filter: drop-shadow(0 10px 18px rgba(0,0,0,.45)); }
+.role:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+.stub { background: var(--gold); display: grid; place-items: center; border-right: 2px dashed rgba(42,33,24,.35); }
+.stub .no { font-family: var(--display); font-size: 26px; color: var(--ticket-ink); writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: .04em; }
+.body { padding: 14px 16px 12px 18px; display: grid; gap: 2px; align-content: start; min-width: 0; }
+.t { font-family: var(--label); font-weight: 700; font-size: 17px; line-height: 1.3; }
+.en { font-family: var(--label); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ticket-muted); }
+.note { font-size: 12.5px; color: var(--ticket-muted); }
+.ai { font-family: var(--label); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; background: var(--ticket-ink); color: var(--ticket); border-radius: 4px; padding: 1px 6px; margin-left: 8px; vertical-align: 3px; }
+.who { margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-family: var(--label); }
+.pill { font-size: 12.5px; font-weight: 700; padding: 3px 11px; border-radius: 99px; }
+.act { font-size: 13px; font-weight: 600; }
+.free .pill { background: #dbeee8; color: #1d5f54; }
+.free .act { color: #1d5f54; }
 
-h2 { font-family: var(--font-display); font-size: 19px; margin: 0; }
-.people { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { font-family: var(--font-display); font-weight: 600; color: var(--muted); font-size: 13px; }
+.yours { background: #fff6d8; box-shadow: inset 0 0 0 3px var(--gold); }
+.yours .stub { background: var(--teal); }
+.yours .pill { background: var(--ticket-ink); color: var(--gold-soft); }
+.yours .act { color: var(--red); }
+
+.taken { cursor: not-allowed; background: #d9d2c2; }
+.taken .stub { background: #a89d86; }
+.taken .t, .taken .en, .taken .note { opacity: .55; }
+.taken .pill { position: absolute; right: 14px; bottom: 16px; font-family: var(--display); font-weight: 400; font-size: 16px; color: var(--red);
+  border: 2.5px solid var(--red); border-radius: 6px; padding: 2px 12px; background: transparent; transform: rotate(-8deg); opacity: .9; max-width: 60%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.taken .who::before { content: "จองแล้วโดย"; font-size: 12px; color: var(--ticket-muted); }
+
+/* Cast list */
+h2 { font-family: var(--display); font-weight: 400; color: var(--gold); font-size: 24px; margin: 0; }
+.people { background: var(--night-2); border: 1px solid rgba(241,236,226,.10); border-radius: 14px; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid rgba(241,236,226,.08); vertical-align: top; }
+th { font-family: var(--label); font-weight: 600; color: var(--text-muted); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+td:first-child { font-family: var(--label); font-weight: 700; color: var(--gold-soft); white-space: nowrap; }
 tr:last-child td { border-bottom: 0; }
-td.n { font-variant-numeric: tabular-nums; text-align: right; width: 60px; }
-.empty { padding: 16px; color: var(--muted); font-size: 14px; }
-.owner-x { font: inherit; font-size: 12px; border: 1px solid var(--line); background: transparent; color: var(--danger); border-radius: 6px; padding: 1px 8px; cursor: pointer; }
-footer { color: var(--muted); font-size: 13px; }
+td.n { font-variant-numeric: tabular-nums; text-align: right; width: 64px; }
+.empty { padding: 18px; color: var(--text-muted); font-size: 14px; }
+footer { color: var(--text-muted); font-size: 13px; text-align: center; }
 
-#toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 32px);
-  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
-@media (prefers-reduced-motion: reduce) { .role { transition: none; } .role:hover:not(:disabled) { transform: none; } }
+#toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 32px);
+  background: var(--gold); color: var(--ticket-ink); font-family: var(--label); font-weight: 600; padding: 11px 18px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.5); z-index: 5; }
+@media (max-width: 420px) { .grid { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .bulbs i { animation: none; } .role, .frames span { transition: none; } .role:hover:not(:disabled) { transform: none; } }
 </style>
 </head>
 <body>
-
 <div class="wrap">
-  <header>
-    <span class="eyebrow">งานกลุ่ม · นำเสนอ 16–20 พ.ย.</span>
-    <h1>แบ่งหน้าที่ทำบทภาพยนตร์</h1>
-    <p class="sub">กรอกชื่อตัวเอง แล้วกดเลือกหน้าที่ หนึ่งหน้าที่มีเจ้าของได้คนเดียว แต่หนึ่งคนเลือกได้หลายหน้าที่ อยากเปลี่ยนก็กดหน้าที่ของตัวเองซ้ำเพื่อคืน แล้วเลือกอันใหม่</p>
+  <header class="marquee">
+    <div class="bulbs" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <span class="eyebrow">Now casting · ทีมงานหนังสั้น</span>
+    <h1>แบ่งหน้าที่ทีมหนัง</h1>
+    <p class="sub">พิมพ์ชื่อตัวเอง แล้วกดตั๋วหน้าที่ที่อยากทำ ตั๋วหนึ่งใบมีเจ้าของได้คนเดียว แต่หนึ่งคนถือได้หลายใบ อยากเปลี่ยนก็กดตั๋วของตัวเองเพื่อคืน แล้วเลือกใบใหม่</p>
+    <span class="date">นำเสนอในชั้นเรียน 16–20 พ.ย.</span>
   </header>
-  <div class="stripe" aria-hidden="true"></div>
 
-  <section class="slip" aria-labelledby="name-label">
-    <label id="name-label" for="name">ชื่อของฉัน</label>
-    <div class="name-row">
-      <input id="name" type="text" maxlength="40" autocomplete="nickname" placeholder="เช่น มายด์">
-    </div>
-    <div class="mine" id="mine">กรอกชื่อก่อน แล้วค่อยกดเลือกหน้าที่ด้านล่าง</div>
+  <div class="strip" aria-label="ความคืบหน้า">
+    <div class="frames" id="frames"></div>
+    <div class="strip-label" id="strip-label"></div>
+  </div>
+
+  <section class="slip">
+    <label for="name">ชื่อของฉัน</label>
+    <input id="name" type="text" maxlength="40" autocomplete="nickname" placeholder="พิมพ์ชื่อเล่นของคุณ">
+    <div class="mine" id="mine">พิมพ์ชื่อก่อน แล้วค่อยกดเลือกตั๋วด้านล่าง</div>
     <div class="stats" id="stats"></div>
   </section>
 
-  <div class="status" id="status">กำลังโหลดรายชื่อที่เลือกไว้…</div>
+  <div class="status" id="status">กำลังโหลดว่าใครจองอะไรไว้แล้ว…</div>
 
-  <section aria-label="หน้าที่ทั้งหมด">
-    <div class="grid" id="grid"></div>
+  <section aria-label="หน้าที่ทั้งหมด"><div class="grid" id="grid"></div></section>
+
+  <section style="display:grid; gap:12px">
+    <h2>รายชื่อทีมงาน</h2>
+    <div class="people" id="people"><div class="empty">ยังไม่มีใครจองหน้าที่</div></div>
   </section>
 
-  <section style="display:grid; gap:10px">
-    <h2>ใครทำอะไร</h2>
-    <div class="people" id="people"><div class="empty">ยังไม่มีใครเลือกหน้าที่</div></div>
-  </section>
-
-  <footer>ข้อมูลอัปเดตเองทุก 4 วินาที · ทีมมี 8 คน แต่มี 14 หน้าที่ บางคนจึงต้องรับมากกว่าหนึ่งอย่าง ดูจำนวนที่ยังว่างได้ด้านบน</footer>
+  <footer>ทีม 8 คน · 14 หน้าที่ · หน้านี้อัปเดตเองทุก 4 วินาที</footer>
 </div>
 <div id="toast" hidden></div>
-
 <script>
 const ROLES = [
   { id: "theme", t: "ชื่อเรื่อง · แก่นเรื่อง", en: "Theme" },
@@ -201,7 +227,9 @@ function render() {
     const b = document.createElement("button");
     b.type = "button"; b.className = "role " + state; b.dataset.id = r.id;
     if (state === "taken" || busy.has(r.id) || !loaded) b.disabled = true;
-    const no = document.createElement("span"); no.className = "no"; no.textContent = "หน้าที่ " + String(i + 1).padStart(2, "0");
+    const stub = document.createElement("span"); stub.className = "stub";
+    const no = document.createElement("span"); no.className = "no"; no.textContent = String(i + 1).padStart(2, "0"); stub.append(no);
+    const body = document.createElement("span"); body.className = "body";
     const t = document.createElement("span"); t.className = "t"; t.textContent = r.t;
     if (r.ai) { const a = document.createElement("span"); a.className = "ai"; a.textContent = "AI"; t.append(a); }
     const en = document.createElement("span"); en.className = "en"; en.textContent = r.en;
@@ -209,11 +237,12 @@ function render() {
     const who = document.createElement("span"); who.className = "who";
     const pill = document.createElement("span"); pill.className = "pill";
     const act = document.createElement("span"); act.className = "act";
-    if (state === "free") { pill.textContent = "ว่าง"; act.textContent = busy.has(r.id) ? "กำลังบันทึก…" : "กดเพื่อเลือก"; }
+    if (state === "free") { pill.textContent = "ว่าง"; act.textContent = busy.has(r.id) ? "กำลังบันทึก…" : "กดเพื่อจอง"; }
     else if (state === "yours") { pill.textContent = "ของฉัน"; act.textContent = busy.has(r.id) ? "กำลังบันทึก…" : "กดเพื่อคืนหน้าที่"; }
     else { pill.textContent = c.name; }
     who.append(pill, act);
-    b.append(no, t, en, mid, who);
+    body.append(t, en, mid, who);
+    b.append(stub, body);
     b.setAttribute("aria-label", r.t + " — " + (state === "free" ? "ว่าง" : state === "yours" ? "ของคุณ กดเพื่อคืน" : "เลือกแล้วโดย " + c.name));
     els.grid.append(b);
   });
@@ -221,12 +250,17 @@ function render() {
   const taken = ROLES.filter((r) => claims[r.id]).length;
   const people = {};
   ROLES.forEach((r) => { const c = claims[r.id]; if (c) { const k = norm(c.name); (people[k] = people[k] || { name: c.name, roles: [] }).roles.push(r); } });
+  const frames = document.getElementById("frames");
+  frames.replaceChildren(...ROLES.map((r) => { const s = document.createElement("span"); if (claims[r.id]) s.className = "on"; s.title = r.t; return s; }));
+  const sl = document.getElementById("strip-label"); sl.replaceChildren();
+  [["จองแล้ว", taken + " / " + ROLES.length], ["ยังว่าง", ROLES.length - taken], ["คนที่จองแล้ว", Object.keys(people).length + " / 8"]].forEach(([l, n]) => {
+    const s = document.createElement("span"); const bb = document.createElement("b"); bb.textContent = n; s.append(l + " ", bb); sl.append(s); });
   els.stats.replaceChildren();
   [[taken, "หน้าที่มีคนเลือกแล้ว"], [ROLES.length - taken, "ยังว่าง"], [Object.keys(people).length, "คนที่เลือกแล้ว (จาก 8)"]].forEach(([n, l]) => {
     const s = document.createElement("span"); const st = document.createElement("strong"); st.textContent = n; s.append(st, l); els.stats.append(s);
   });
 
-  if (!myName()) els.mine.textContent = "กรอกชื่อก่อน แล้วค่อยกดเลือกหน้าที่ด้านล่าง";
+  if (!myName()) els.mine.textContent = "พิมพ์ชื่อก่อน แล้วค่อยกดเลือกตั๋วด้านล่าง";
   else {
     const mineRoles = ROLES.filter((r) => isMine(claims[r.id])).map((r) => r.t);
     els.mine.replaceChildren();
@@ -235,7 +269,7 @@ function render() {
   }
 
   const list = Object.values(people).sort((a, b) => a.name.localeCompare(b.name, "th"));
-  if (!list.length) { const d = document.createElement("div"); d.className = "empty"; d.textContent = "ยังไม่มีใครเลือกหน้าที่"; els.people.replaceChildren(d); return; }
+  if (!list.length) { const d = document.createElement("div"); d.className = "empty"; d.textContent = "ยังไม่มีใครจองหน้าที่"; els.people.replaceChildren(d); return; }
   const table = document.createElement("table");
   const head = document.createElement("tr");
   ["ชื่อ", "หน้าที่", "จำนวน"].forEach((h, i) => { const th = document.createElement("th"); th.textContent = h; if (i === 2) th.style.textAlign = "right"; head.append(th); });
@@ -258,7 +292,7 @@ async function act(fn, id) {
     const res = await call(fn, id, me);
     setClaims(res.claims);
     const role = ROLES.find((r) => r.id === id).t;
-    toast(res.ok ? (fn === "claim" ? "เลือกแล้ว: " : "คืนหน้าที่แล้ว: ") + role : res.msg);
+    toast(res.ok ? (fn === "claim" ? "จองแล้ว: " : "คืนหน้าที่แล้ว: ") + role : res.msg);
   } catch (e) { toast("บันทึกไม่สำเร็จ ลองกดใหม่อีกครั้ง"); }
   finally { busy.delete(id); render(); }
 }
