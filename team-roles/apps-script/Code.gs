@@ -19,7 +19,7 @@ function read_() {
 function write_(claims) {
   PropertiesService.getScriptProperties().setProperty(KEY, JSON.stringify(claims));
 }
-function clean_(name) { return String(name || '').trim().replace(/\s+/g, ' ').slice(0, 40); }
+function clean_(name) { return String(name || '').trim().replace(/\s+/g, ' ').slice(0, 81); }
 function norm_(name) { return clean_(name).toLowerCase(); }
 
 function withLock_(fn) {

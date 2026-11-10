@@ -26,6 +26,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { background: var(--night); }
 body {
   margin: 0; min-height: 100vh; color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.55;
@@ -63,7 +64,7 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 7vw, 
 
 /* Name card */
 .slip { background: var(--night-2); border: 1px solid rgba(241,236,226,.10); border-radius: 14px; padding: 18px; display: grid; gap: 10px; }
-.slip label { font-family: var(--label); font-weight: 600; font-size: 14px; letter-spacing: .04em; color: var(--gold-soft); }
+.name-grid span { font-family: var(--label); font-weight: 600; font-size: 14px; letter-spacing: .04em; color: var(--gold-soft); }
 #name { width: 100%; font: inherit; font-family: var(--label); font-size: 20px; font-weight: 600; padding: 12px 14px; border-radius: 10px;
   border: 1.5px solid rgba(241,236,226,.18); background: #0a1617; color: var(--text); }
 #name::placeholder { color: #5f7470; font-weight: 500; }
@@ -107,8 +108,9 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 7vw, 
 .taken .stub { background: #a89d86; }
 .taken .t, .taken .en, .taken .note { opacity: .55; }
 .taken .pill { position: absolute; right: 14px; bottom: 16px; font-family: var(--display); font-weight: 400; font-size: 16px; color: var(--red);
-  border: 2.5px solid var(--red); border-radius: 6px; padding: 2px 12px; background: transparent; transform: rotate(-8deg); opacity: .9; max-width: 60%;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  border: 2.5px solid var(--red); border-radius: 6px; padding: 2px 10px; background: transparent; transform: rotate(-6deg); opacity: .9; max-width: 68%;
+  font-size: 14px; line-height: 1.35; text-align: center; overflow-wrap: anywhere; }
+.taken .body { padding-bottom: 54px; }
 .taken .who::before { content: "จองแล้วโดย"; font-size: 12px; color: var(--ticket-muted); }
 
 /* Cast list */
@@ -125,8 +127,34 @@ footer { color: var(--text-muted); font-size: 13px; text-align: center; }
 
 #toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 32px);
   background: var(--gold); color: var(--ticket-ink); font-family: var(--label); font-weight: 600; padding: 11px 18px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.5); z-index: 5; }
+.name-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.name-grid label { display: grid; gap: 6px; }
+.name-grid input { width: 100%; font: inherit; font-family: var(--label); font-size: 18px; font-weight: 600; padding: 11px 14px; border-radius: 10px;
+  border: 1.5px solid rgba(241,236,226,.18); background: #0a1617; color: var(--text); min-width: 0; }
+.name-grid input::placeholder { color: #5f7470; font-weight: 500; }
+.name-grid input:focus-visible { outline: none; border-color: var(--gold); box-shadow: 0 0 0 4px rgba(242,182,50,.2); }
+@media (max-width: 480px) { .name-grid { grid-template-columns: 1fr; } }
+
+.rules-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(4,10,10,.78); backdrop-filter: blur(4px);
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.rules { width: min(520px, 100%); max-height: 100%; overflow-y: auto; background: var(--ticket); color: var(--ticket-ink); border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.6); animation: pop .28s ease-out; }
+@keyframes pop { from { transform: translateY(12px) scale(.97); opacity: 0; } }
+.rules-head { background: var(--gold); padding: 18px 22px 14px; border-bottom: 2px dashed rgba(42,33,24,.35); }
+.rules-head .eyebrow { color: var(--ticket-ink); letter-spacing: .2em; }
+.rules h2 { color: var(--ticket-ink); font-size: 26px; margin-top: 2px; }
+.rules ol { margin: 0; padding: 18px 22px 4px 46px; display: grid; gap: 10px; font-size: 15px; }
+.rules li::marker { font-family: var(--display); color: var(--red); }
+.rules li b { font-family: var(--label); }
+.rules .foot { padding: 14px 22px 20px; display: grid; gap: 10px; }
+.rules .foot small { color: var(--ticket-muted); font-size: 13px; }
+.rules button { font: inherit; font-family: var(--label); font-weight: 700; font-size: 17px; padding: 13px 18px; border: 0; border-radius: 12px;
+  background: var(--ticket-ink); color: var(--gold-soft); cursor: pointer; }
+.rules button:hover { background: #3d3024; }
+.rules button:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
+.rules-link { justify-self: start; font: inherit; font-family: var(--label); font-size: 13px; color: var(--gold-soft); background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }
 @media (max-width: 420px) { .grid { grid-template-columns: 1fr; } }
-@media (prefers-reduced-motion: reduce) { .bulbs i { animation: none; } .role, .frames span { transition: none; } .role:hover:not(:disabled) { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .bulbs i { animation: none; } .role, .frames span { transition: none; } .role:hover:not(:disabled) { transform: none; } .rules { animation: none; } }
 </style>
 </head>
 <body>
@@ -145,9 +173,12 @@ footer { color: var(--text-muted); font-size: 13px; text-align: center; }
   </div>
 
   <section class="slip">
-    <label for="name">ชื่อของฉัน</label>
-    <input id="name" type="text" maxlength="40" autocomplete="nickname" placeholder="พิมพ์ชื่อเล่นของคุณ">
-    <div class="mine" id="mine">พิมพ์ชื่อก่อน แล้วค่อยกดเลือกตั๋วด้านล่าง</div>
+    <div class="name-grid">
+      <label for="first"><span>ชื่อจริง</span><input id="first" type="text" maxlength="40" autocomplete="given-name" placeholder="เช่น สมชาย"></label>
+      <label for="last"><span>นามสกุล</span><input id="last" type="text" maxlength="40" autocomplete="family-name" placeholder="เช่น ใจดี"></label>
+    </div>
+    <div class="mine" id="mine">พิมพ์ชื่อและนามสกุลก่อน แล้วค่อยกดเลือกตั๋วด้านล่าง</div>
+    <button type="button" class="rules-link" id="show-rules">อ่านกติกาอีกครั้ง</button>
     <div class="stats" id="stats"></div>
   </section>
 
@@ -163,6 +194,27 @@ footer { color: var(--text-muted); font-size: 13px; text-align: center; }
   <footer>ทีม 8 คน · 14 หน้าที่ · หน้านี้อัปเดตเองทุก 4 วินาที</footer>
 </div>
 <div id="toast" hidden></div>
+<div class="rules-backdrop" id="rules" role="dialog" aria-modal="true" aria-labelledby="rules-title">
+  <div class="rules">
+    <div class="rules-head">
+      <span class="eyebrow">อ่านก่อนจอง</span>
+      <h2 id="rules-title">กติกาการเลือกหน้าที่</h2>
+    </div>
+    <ol>
+      <li><b>พิมพ์ชื่อจริงและนามสกุล</b>ให้ครบก่อน แล้วค่อยกดเลือกตั๋ว</li>
+      <li><b>หนึ่งหน้าที่มีได้แค่ 1 คน</b> ใครกดก่อนได้ก่อน ตั๋วที่มีตราประทับชื่อแล้ว เลือกซ้ำไม่ได้</li>
+      <li><b>หนึ่งคนเลือกได้หลายหน้าที่</b> ทีมมี 8 คนแต่มี 14 หน้าที่ บางคนต้องรับมากกว่าหนึ่งอย่าง และทุกคนควรมีอย่างน้อย 1 หน้าที่</li>
+      <li><b>อยากเปลี่ยน</b> ให้กดตั๋วของตัวเองเพื่อคืน แล้วกดเลือกใบใหม่</li>
+      <li><b>พิมพ์ชื่อให้เหมือนเดิมทุกครั้ง</b> ถ้าพิมพ์ต่างไป ระบบจะคิดว่าเป็นอีกคน และคืนหน้าที่เดิมไม่ได้</li>
+      <li><b>ห้ามใช้ชื่อเพื่อน</b>ไปจองหรือคืนหน้าที่แทน ถ้ามีปัญหาให้บอกหัวหน้ากลุ่ม</li>
+      <li>เลือกให้เสร็จก่อนนัดประชุมกลุ่ม แล้วนำเสนอในชั้นเรียน <b>16–20 พ.ย.</b></li>
+    </ol>
+    <div class="foot">
+      <button type="button" id="rules-ok">ตกลง ไปเลือกหน้าที่</button>
+      <small>เปิดอ่านกติกาอีกครั้งได้จากลิงก์ใต้ช่องชื่อ</small>
+    </div>
+  </div>
+</div>
 <script>
 const ROLES = [
   { id: "theme", t: "ชื่อเรื่อง · แก่นเรื่อง", en: "Theme" },
@@ -182,7 +234,7 @@ const ROLES = [
 ];
 
 const $ = (id) => document.getElementById(id);
-const els = { name: $("name"), mine: $("mine"), stats: $("stats"), status: $("status"), grid: $("grid"), people: $("people"), toast: $("toast") };
+const els = { first: $("first"), last: $("last"), mine: $("mine"), stats: $("stats"), status: $("status"), grid: $("grid"), people: $("people"), toast: $("toast") };
 
 let claims = {};
 let loaded = false;
@@ -195,12 +247,14 @@ function call(fn, ...args) {
 }
 function store(get, val) {
   try {
-    if (get) return localStorage.getItem("team-roles:name") || "";
-    localStorage.setItem("team-roles:name", val);
-  } catch (e) { return ""; }
+    if (get) return JSON.parse(localStorage.getItem("team-roles:fullname") || "{}");
+    localStorage.setItem("team-roles:fullname", JSON.stringify(val));
+  } catch (e) { return {}; }
 }
 const norm = (s) => String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
-const myName = () => els.name.value.trim().replace(/\s+/g, " ");
+const clean = (s) => s.trim().replace(/\s+/g, " ");
+const hasFull = () => clean(els.first.value) && clean(els.last.value);
+const myName = () => (hasFull() ? clean(els.first.value) + " " + clean(els.last.value) : "");
 const isMine = (c) => c && myName() && norm(c.name) === norm(myName());
 
 let toastTimer;
@@ -260,7 +314,7 @@ function render() {
     const s = document.createElement("span"); const st = document.createElement("strong"); st.textContent = n; s.append(st, l); els.stats.append(s);
   });
 
-  if (!myName()) els.mine.textContent = "พิมพ์ชื่อก่อน แล้วค่อยกดเลือกตั๋วด้านล่าง";
+  if (!myName()) els.mine.textContent = "พิมพ์ชื่อและนามสกุลก่อน แล้วค่อยกดเลือกตั๋วด้านล่าง";
   else {
     const mineRoles = ROLES.filter((r) => isMine(claims[r.id])).map((r) => r.t);
     els.mine.replaceChildren();
@@ -286,7 +340,7 @@ function render() {
 
 async function act(fn, id) {
   const me = myName();
-  if (!me) { toast("กรอกชื่อของคุณก่อน"); els.name.focus(); return; }
+  if (!me) { toast("พิมพ์ชื่อจริงและนามสกุลให้ครบก่อน"); (clean(els.first.value) ? els.last : els.first).focus(); return; }
   busy.add(id); render();
   try {
     const res = await call(fn, id, me);
@@ -313,8 +367,20 @@ els.grid.addEventListener("click", (ev) => {
   if (isMine(claims[id])) act("release", id); else if (!claims[id]) act("claim", id);
 });
 let nameTimer;
-els.name.addEventListener("input", () => { render(); clearTimeout(nameTimer); nameTimer = setTimeout(() => store(false, myName()), 400); });
-els.name.value = store(true);
+[els.first, els.last].forEach((el) => el.addEventListener("input", () => {
+  render(); clearTimeout(nameTimer);
+  nameTimer = setTimeout(() => store(false, { first: clean(els.first.value), last: clean(els.last.value) }), 400);
+}));
+const saved = store(true);
+els.first.value = saved.first || ""; els.last.value = saved.last || "";
+
+const rules = $("rules");
+function openRules() { rules.hidden = false; $("rules-ok").focus(); }
+function closeRules() { rules.hidden = true; (clean(els.first.value) ? (clean(els.last.value) ? els.first : els.last) : els.first).focus(); }
+$("rules-ok").addEventListener("click", closeRules);
+$("show-rules").addEventListener("click", openRules);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !rules.hidden) closeRules(); });
+openRules();
 render();
 refresh();
 setInterval(() => { if (!document.hidden) refresh(); }, 4000);
