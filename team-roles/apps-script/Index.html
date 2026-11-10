@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<title>แบ่งหน้าที่ทีมหนัง</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+/* Layout: a call-sheet. Name slip on top, then a grid of role "slates"; each slate is free, yours, or taken. */
+:root {
+  --bg: #eef3f1;
+  --surface: #ffffff;
+  --ink: #15302b;
+  --muted: #5a716c;
+  --line: #cfdcd8;
+  --teal: #1f6b5f;
+  --teal-soft: #dcece8;
+  --amber: #e2a924;
+  --amber-ink: #5b3f00;
+  --amber-soft: #fbf0d3;
+  --taken: #eef1f0;
+  --danger: #b0412e;
+  --font-display: "Bai Jamjuree", "IBM Plex Sans Thai", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans Thai", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1a18; --surface: #16241f; --ink: #e5efec; --muted: #93aaa4; --line: #2a3d38;
+    --teal: #5fbfae; --teal-soft: #1b3832; --amber: #f0bd45; --amber-ink: #f6d585; --amber-soft: #33290f;
+    --taken: #1a2522; --danger: #ef8a76; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1a18; --surface: #16241f; --ink: #e5efec; --muted: #93aaa4; --line: #2a3d38;
+  --teal: #5fbfae; --teal-soft: #1b3832; --amber: #f0bd45; --amber-ink: #f6d585; --amber-soft: #33290f;
+  --taken: #1a2522; --danger: #ef8a76; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 22px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--font-display); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--teal); font-weight: 600; }
+h1 { font-family: var(--font-display); font-size: clamp(26px, 5vw, 36px); line-height: 1.15; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; max-width: 62ch; }
+.stripe { height: 10px; border-radius: 3px; background: repeating-linear-gradient(-45deg, var(--ink) 0 12px, var(--bg) 12px 24px); opacity: .85; }
+
+.slip { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 12px; }
+.slip label { font-weight: 600; font-family: var(--font-display); }
+.name-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+#name { flex: 1 1 220px; min-width: 0; font: inherit; font-size: 17px; padding: 10px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--bg); color: var(--ink); }
+#name:focus-visible { outline: 3px solid var(--amber); outline-offset: 1px; border-color: var(--teal); }
+.mine { color: var(--muted); font-size: 14px; }
+.mine b { color: var(--ink); }
+
+.stats { display: flex; gap: 10px 22px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
+.stats strong { font-family: var(--font-display); font-size: 20px; color: var(--ink); font-variant-numeric: tabular-nums; margin-right: 4px; }
+
+.status { font-size: 14px; padding: 10px 12px; border-radius: 8px; background: var(--amber-soft); color: var(--amber-ink); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.role {
+  position: relative; text-align: left; font: inherit; color: inherit; cursor: pointer;
+  background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 14px 14px 12px;
+  display: grid; grid-template-rows: auto auto 1fr auto; gap: 4px; min-width: 0; min-height: 132px;
+  transition: border-color .15s, transform .15s;
+}
+.role:hover:not(:disabled) { border-color: var(--teal); transform: translateY(-1px); }
+.role:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+.role .no { font-family: var(--font-display); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: .06em; }
+.role .t { font-family: var(--font-display); font-weight: 600; font-size: 16px; line-height: 1.3; }
+.role .en { font-size: 12px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
+.role .note { font-size: 13px; color: var(--muted); }
+.role .who { margin-top: 8px; font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pill { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 99px; white-space: nowrap; }
+.free .pill { background: var(--teal-soft); color: var(--teal); }
+.yours { border-color: var(--amber); background: var(--amber-soft); }
+.yours .pill { background: var(--amber); color: #2b1d00; }
+.taken { background: var(--taken); cursor: not-allowed; }
+.taken .pill { background: var(--line); color: var(--ink); }
+.taken .t, .taken .en { opacity: .7; }
+.role .act { font-size: 13px; color: var(--teal); font-weight: 600; }
+.yours .act { color: var(--danger); }
+.ai { font-size: 11px; font-weight: 600; letter-spacing: .06em; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; margin-left: 6px; vertical-align: 2px; color: var(--muted); }
+
+h2 { font-family: var(--font-display); font-size: 19px; margin: 0; }
+.people { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-display); font-weight: 600; color: var(--muted); font-size: 13px; }
+tr:last-child td { border-bottom: 0; }
+td.n { font-variant-numeric: tabular-nums; text-align: right; width: 60px; }
+.empty { padding: 16px; color: var(--muted); font-size: 14px; }
+.owner-x { font: inherit; font-size: 12px; border: 1px solid var(--line); background: transparent; color: var(--danger); border-radius: 6px; padding: 1px 8px; cursor: pointer; }
+footer { color: var(--muted); font-size: 13px; }
+
+#toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 32px);
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+@media (prefers-reduced-motion: reduce) { .role { transition: none; } .role:hover:not(:disabled) { transform: none; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">งานกลุ่ม · นำเสนอ 16–20 พ.ย.</span>
+    <h1>แบ่งหน้าที่ทำบทภาพยนตร์</h1>
+    <p class="sub">กรอกชื่อตัวเอง แล้วกดเลือกหน้าที่ หนึ่งหน้าที่มีเจ้าของได้คนเดียว แต่หนึ่งคนเลือกได้หลายหน้าที่ อยากเปลี่ยนก็กดหน้าที่ของตัวเองซ้ำเพื่อคืน แล้วเลือกอันใหม่</p>
+  </header>
+  <div class="stripe" aria-hidden="true"></div>
+
+  <section class="slip" aria-labelledby="name-label">
+    <label id="name-label" for="name">ชื่อของฉัน</label>
+    <div class="name-row">
+      <input id="name" type="text" maxlength="40" autocomplete="nickname" placeholder="เช่น มายด์">
+    </div>
+    <div class="mine" id="mine">กรอกชื่อก่อน แล้วค่อยกดเลือกหน้าที่ด้านล่าง</div>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <div class="status" id="status">กำลังโหลดรายชื่อที่เลือกไว้…</div>
+
+  <section aria-label="หน้าที่ทั้งหมด">
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section style="display:grid; gap:10px">
+    <h2>ใครทำอะไร</h2>
+    <div class="people" id="people"><div class="empty">ยังไม่มีใครเลือกหน้าที่</div></div>
+  </section>
+
+  <footer>ข้อมูลอัปเดตเองทุก 4 วินาที · ทีมมี 8 คน แต่มี 14 หน้าที่ บางคนจึงต้องรับมากกว่าหนึ่งอย่าง ดูจำนวนที่ยังว่างได้ด้านบน</footer>
+</div>
+<div id="toast" hidden></div>
+
+<script>
+const ROLES = [
+  { id: "theme", t: "ชื่อเรื่อง · แก่นเรื่อง", en: "Theme" },
+  { id: "premise", t: "Big Idea · สมมติฐาน", en: "Premise" },
+  { id: "logline", t: "ประโยคขาย", en: "Logline" },
+  { id: "intention", t: "ทำไมถึงอยากทำเรื่องนี้", en: "Project intention" },
+  { id: "target", t: "กลุ่มเป้าหมาย", en: "Target" },
+  { id: "budget", t: "งบประมาณ", en: "Budget" },
+  { id: "plot", t: "Plot · Mind map · Keyword", en: "โครงสร้าง 3 องก์" },
+  { id: "concept", t: "Concept board", en: "จากบทภาพยนตร์", ai: true },
+  { id: "mood", t: "Mood & tone board", en: "จากบทภาพยนตร์", ai: true, note: "อาจารย์บรรยายสัปดาห์หน้า" },
+  { id: "story", t: "Storyboard", en: "1 ฉากจากไคลแม็กซ์", ai: true, note: "อาจารย์บรรยายสัปดาห์หน้า" },
+  { id: "music", t: "ตัวอย่างเพลงประกอบ", en: "Soundtrack sample", ai: true },
+  { id: "trailer", t: "ตัวอย่างภาพยนตร์", en: "Trailer", ai: true },
+  { id: "timeline", t: "Timeline การผลิต", en: "Production timeline" },
+  { id: "crew", t: "Crew", en: "รายชื่อทีมงาน" },
+];
+
+const $ = (id) => document.getElementById(id);
+const els = { name: $("name"), mine: $("mine"), stats: $("stats"), status: $("status"), grid: $("grid"), people: $("people"), toast: $("toast") };
+
+let claims = {};
+let loaded = false;
+const busy = new Set();
+
+function call(fn, ...args) {
+  return new Promise((resolve, reject) => {
+    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args);
+  });
+}
+function store(get, val) {
+  try {
+    if (get) return localStorage.getItem("team-roles:name") || "";
+    localStorage.setItem("team-roles:name", val);
+  } catch (e) { return ""; }
+}
+const norm = (s) => String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
+const myName = () => els.name.value.trim().replace(/\s+/g, " ");
+const isMine = (c) => c && myName() && norm(c.name) === norm(myName());
+
+let toastTimer;
+function toast(msg) {
+  els.toast.textContent = msg; els.toast.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { els.toast.hidden = true; }, 3200);
+}
+function showStatus(msg) { els.status.textContent = msg; els.status.hidden = !msg; }
+
+function setClaims(next) {
+  const clean = {};
+  Object.keys(next || {}).forEach((id) => {
+    const v = next[id];
+    if (v && typeof v.name === "string" && v.name.trim() && ROLES.some((r) => r.id === id)) clean[id] = { name: v.name.trim(), at: v.at };
+  });
+  claims = clean;
+}
+
+function render() {
+  els.grid.replaceChildren();
+  ROLES.forEach((r, i) => {
+    const c = claims[r.id];
+    const state = !c ? "free" : isMine(c) ? "yours" : "taken";
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "role " + state; b.dataset.id = r.id;
+    if (state === "taken" || busy.has(r.id) || !loaded) b.disabled = true;
+    const no = document.createElement("span"); no.className = "no"; no.textContent = "หน้าที่ " + String(i + 1).padStart(2, "0");
+    const t = document.createElement("span"); t.className = "t"; t.textContent = r.t;
+    if (r.ai) { const a = document.createElement("span"); a.className = "ai"; a.textContent = "AI"; t.append(a); }
+    const en = document.createElement("span"); en.className = "en"; en.textContent = r.en;
+    const mid = document.createElement("span"); mid.className = "note"; mid.textContent = r.note || "";
+    const who = document.createElement("span"); who.className = "who";
+    const pill = document.createElement("span"); pill.className = "pill";
+    const act = document.createElement("span"); act.className = "act";
+    if (state === "free") { pill.textContent = "ว่าง"; act.textContent = busy.has(r.id) ? "กำลังบันทึก…" : "กดเพื่อเลือก"; }
+    else if (state === "yours") { pill.textContent = "ของฉัน"; act.textContent = busy.has(r.id) ? "กำลังบันทึก…" : "กดเพื่อคืนหน้าที่"; }
+    else { pill.textContent = c.name; }
+    who.append(pill, act);
+    b.append(no, t, en, mid, who);
+    b.setAttribute("aria-label", r.t + " — " + (state === "free" ? "ว่าง" : state === "yours" ? "ของคุณ กดเพื่อคืน" : "เลือกแล้วโดย " + c.name));
+    els.grid.append(b);
+  });
+
+  const taken = ROLES.filter((r) => claims[r.id]).length;
+  const people = {};
+  ROLES.forEach((r) => { const c = claims[r.id]; if (c) { const k = norm(c.name); (people[k] = people[k] || { name: c.name, roles: [] }).roles.push(r); } });
+  els.stats.replaceChildren();
+  [[taken, "หน้าที่มีคนเลือกแล้ว"], [ROLES.length - taken, "ยังว่าง"], [Object.keys(people).length, "คนที่เลือกแล้ว (จาก 8)"]].forEach(([n, l]) => {
+    const s = document.createElement("span"); const st = document.createElement("strong"); st.textContent = n; s.append(st, l); els.stats.append(s);
+  });
+
+  if (!myName()) els.mine.textContent = "กรอกชื่อก่อน แล้วค่อยกดเลือกหน้าที่ด้านล่าง";
+  else {
+    const mineRoles = ROLES.filter((r) => isMine(claims[r.id])).map((r) => r.t);
+    els.mine.replaceChildren();
+    if (mineRoles.length) { const b = document.createElement("b"); b.textContent = mineRoles.join(", "); els.mine.append("หน้าที่ของคุณ: ", b); }
+    else els.mine.textContent = "คุณยังไม่ได้เลือกหน้าที่";
+  }
+
+  const list = Object.values(people).sort((a, b) => a.name.localeCompare(b.name, "th"));
+  if (!list.length) { const d = document.createElement("div"); d.className = "empty"; d.textContent = "ยังไม่มีใครเลือกหน้าที่"; els.people.replaceChildren(d); return; }
+  const table = document.createElement("table");
+  const head = document.createElement("tr");
+  ["ชื่อ", "หน้าที่", "จำนวน"].forEach((h, i) => { const th = document.createElement("th"); th.textContent = h; if (i === 2) th.style.textAlign = "right"; head.append(th); });
+  table.append(head);
+  list.forEach((p) => {
+    const tr = document.createElement("tr");
+    const a = document.createElement("td"); a.textContent = p.name;
+    const b = document.createElement("td"); b.textContent = p.roles.map((r) => r.t).join(", ");
+    const n = document.createElement("td"); n.className = "n"; n.textContent = p.roles.length;
+    tr.append(a, b, n); table.append(tr);
+  });
+  els.people.replaceChildren(table);
+}
+
+async function act(fn, id) {
+  const me = myName();
+  if (!me) { toast("กรอกชื่อของคุณก่อน"); els.name.focus(); return; }
+  busy.add(id); render();
+  try {
+    const res = await call(fn, id, me);
+    setClaims(res.claims);
+    const role = ROLES.find((r) => r.id === id).t;
+    toast(res.ok ? (fn === "claim" ? "เลือกแล้ว: " : "คืนหน้าที่แล้ว: ") + role : res.msg);
+  } catch (e) { toast("บันทึกไม่สำเร็จ ลองกดใหม่อีกครั้ง"); }
+  finally { busy.delete(id); render(); }
+}
+
+async function refresh() {
+  try {
+    setClaims(await call("getState"));
+    loaded = true; showStatus("");
+  } catch (e) {
+    if (!loaded) showStatus("ยังโหลดข้อมูลไม่ได้ ตรวจอินเทอร์เน็ตแล้วรีเฟรชหน้านี้");
+  }
+  if (!busy.size) render();
+}
+
+els.grid.addEventListener("click", (ev) => {
+  const b = ev.target.closest(".role"); if (!b || b.disabled) return;
+  const id = b.dataset.id;
+  if (isMine(claims[id])) act("release", id); else if (!claims[id]) act("claim", id);
+});
+let nameTimer;
+els.name.addEventListener("input", () => { render(); clearTimeout(nameTimer); nameTimer = setTimeout(() => store(false, myName()), 400); });
+els.name.value = store(true);
+render();
+refresh();
+setInterval(() => { if (!document.hidden) refresh(); }, 4000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+</script>
+</body>
+</html>
