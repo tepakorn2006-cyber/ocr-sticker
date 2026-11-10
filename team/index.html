@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>แบ่งหน้าที่ทีมหนัง</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chonburi&family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+/* Layout: a cinema lobby. Marquee title, a reel that fills as roles are taken, and each role is a ticket that gets stamped with its owner's name. Single dark world on purpose. */
+:root {
+  --night: #0c1a19;
+  --night-2: #12262a;
+  --ticket: #f6efdf;
+  --ticket-ink: #2a2118;
+  --ticket-muted: #7a6b57;
+  --gold: #f2b632;
+  --gold-soft: #f8d77d;
+  --teal: #4fb3a2;
+  --red: #d2452f;
+  --text: #f1ece2;
+  --text-muted: #a7b8b3;
+  --display: "Chonburi", "Bai Jamjuree", serif;
+  --label: "Bai Jamjuree", "IBM Plex Sans Thai", system-ui, sans-serif;
+  --body: "IBM Plex Sans Thai", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--night); }
+body {
+  margin: 0; min-height: 100vh; color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.55;
+  background:
+    radial-gradient(1000px 500px at 50% -120px, rgba(242,182,50,.20), transparent 70%),
+    radial-gradient(700px 400px at 100% 100%, rgba(79,179,162,.12), transparent 70%),
+    var(--night);
+  padding: 28px max(16px, env(safe-area-inset-right, 0px)) 56px max(16px, env(safe-area-inset-left, 0px));
+}
+.wrap { max-width: 1060px; margin: 0 auto; display: grid; gap: 26px; }
+
+/* Marquee */
+.marquee { text-align: center; display: grid; gap: 10px; justify-items: center; padding-top: 8px; }
+.bulbs { display: flex; gap: 10px; }
+.bulbs i { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px 2px rgba(242,182,50,.7); animation: blink 1.6s infinite; }
+.bulbs i:nth-child(2n) { animation-delay: .8s; }
+@keyframes blink { 50% { opacity: .35; box-shadow: none; } }
+.eyebrow { font-family: var(--label); font-weight: 600; letter-spacing: .28em; font-size: 12px; color: var(--gold-soft); text-transform: uppercase; }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 7vw, 54px); line-height: 1.2; margin: 0; color: var(--gold);
+  text-shadow: 0 0 24px rgba(242,182,50,.35), 0 2px 0 #6b4a05; text-wrap: balance; }
+.sub { margin: 0; color: var(--text-muted); max-width: 54ch; text-wrap: balance; }
+.date { font-family: var(--label); font-size: 13px; border: 1px solid rgba(242,182,50,.45); color: var(--gold-soft); padding: 3px 14px; border-radius: 99px; }
+
+/* Film strip progress */
+.strip { background: #050c0c; border-radius: 6px; padding: 10px 10px; position: relative;
+  --perf: radial-gradient(circle, transparent 0 0, transparent 0) ; }
+.strip::before, .strip::after { content: ""; position: absolute; left: 8px; right: 8px; height: 5px;
+  background: repeating-linear-gradient(90deg, rgba(241,236,226,.55) 0 8px, transparent 8px 18px); border-radius: 2px; }
+.strip::before { top: 3px; } .strip::after { bottom: 3px; }
+.frames { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; margin: 6px 0; }
+.frames span { height: 22px; border-radius: 2px; background: #1c2f30; transition: background .3s; }
+.frames span.on { background: linear-gradient(180deg, var(--gold-soft), var(--gold)); }
+.strip-label { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; font-family: var(--label); font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+.strip-label b { color: var(--text); font-variant-numeric: tabular-nums; font-size: 16px; }
+
+/* Name card */
+.slip { background: var(--night-2); border: 1px solid rgba(241,236,226,.10); border-radius: 14px; padding: 18px; display: grid; gap: 10px; }
+.name-grid span { font-family: var(--label); font-weight: 600; font-size: 14px; letter-spacing: .04em; color: var(--gold-soft); }
+#name { width: 100%; font: inherit; font-family: var(--label); font-size: 20px; font-weight: 600; padding: 12px 14px; border-radius: 10px;
+  border: 1.5px solid rgba(241,236,226,.18); background: #0a1617; color: var(--text); }
+#name::placeholder { color: #5f7470; font-weight: 500; }
+#name:focus-visible { outline: none; border-color: var(--gold); box-shadow: 0 0 0 4px rgba(242,182,50,.2); }
+.mine { color: var(--text-muted); font-size: 14px; }
+.mine b { color: var(--gold-soft); font-weight: 600; }
+.stats { display: none; }
+.clock { display: flex; align-items: center; justify-content: center; gap: 10px 14px; flex-wrap: wrap; padding: 12px 16px; border-radius: 12px;
+  background: rgba(242,182,50,.10); border: 1px solid rgba(242,182,50,.35); font-family: var(--label); text-align: center; }
+.clock .lbl { color: var(--gold-soft); font-size: 14px; }
+.clock .time { font-family: var(--display); color: var(--gold); font-size: 26px; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.clock.soon { border-color: var(--red); background: rgba(210,69,47,.14); }
+.clock.soon .time { color: #ff8a73; }
+.clock.closed { background: rgba(210,69,47,.16); border-color: var(--red); }
+.clock.closed .lbl { color: #ffb4a4; font-size: 15px; font-weight: 600; }
+.status { font-size: 14px; padding: 10px 14px; border-radius: 10px; background: rgba(242,182,50,.12); color: var(--gold-soft); border: 1px solid rgba(242,182,50,.3); }
+
+/* Tickets */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+.role {
+  --notch: var(--night);
+  position: relative; display: grid; grid-template-columns: 64px 1fr; text-align: left; font: inherit; color: var(--ticket-ink);
+  background: var(--ticket); border: 0; border-radius: 10px; padding: 0; cursor: pointer; min-height: 128px; overflow: hidden;
+  -webkit-mask: radial-gradient(circle 9px at 64px 0, transparent 98%, #000) top/100% 51% no-repeat, radial-gradient(circle 9px at 64px 100%, transparent 98%, #000) bottom/100% 51% no-repeat;
+          mask: radial-gradient(circle 9px at 64px 0, transparent 98%, #000) top/100% 51% no-repeat, radial-gradient(circle 9px at 64px 100%, transparent 98%, #000) bottom/100% 51% no-repeat;
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s;
+}
+.role:hover:not(:disabled) { transform: translateY(-3px) rotate(-.4deg); filter: drop-shadow(0 10px 18px rgba(0,0,0,.45)); }
+.role:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+.stub { background: var(--gold); display: grid; place-items: center; border-right: 2px dashed rgba(42,33,24,.35); }
+.stub .no { font-family: var(--display); font-size: 26px; color: var(--ticket-ink); writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: .04em; }
+.body { padding: 14px 16px 12px 18px; display: grid; gap: 2px; align-content: start; min-width: 0; }
+.t { font-family: var(--label); font-weight: 700; font-size: 17px; line-height: 1.3; }
+.en { font-family: var(--label); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ticket-muted); }
+.note { font-size: 12.5px; color: var(--ticket-muted); }
+.ai { font-family: var(--label); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; background: var(--ticket-ink); color: var(--ticket); border-radius: 4px; padding: 1px 6px; margin-left: 8px; vertical-align: 3px; }
+.who { margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-family: var(--label); }
+.pill { font-size: 12.5px; font-weight: 700; padding: 3px 11px; border-radius: 99px; }
+.act { font-size: 13px; font-weight: 600; }
+.free .pill { background: #dbeee8; color: #1d5f54; }
+.free .act { color: #1d5f54; }
+
+.yours { background: #fff6d8; box-shadow: inset 0 0 0 3px var(--gold); }
+.yours .stub { background: var(--teal); }
+.yours .pill { background: var(--ticket-ink); color: var(--gold-soft); }
+.yours .act { color: var(--red); }
+
+.taken { cursor: not-allowed; background: #d9d2c2; }
+.taken .stub { background: #a89d86; }
+.taken .t, .taken .en, .taken .note { opacity: .55; }
+.taken .pill { position: absolute; right: 14px; bottom: 16px; font-family: var(--display); font-weight: 400; font-size: 16px; color: var(--red);
+  border: 2.5px solid var(--red); border-radius: 6px; padding: 2px 10px; background: transparent; transform: rotate(-6deg); opacity: .9; max-width: 68%;
+  font-size: 14px; line-height: 1.35; text-align: center; overflow-wrap: anywhere; }
+.taken .body { padding-bottom: 54px; }
+.yours .body { padding-bottom: 54px; }
+.stamp { position: absolute; right: 14px; bottom: 14px; font-family: var(--display); font-size: 14px; line-height: 1.35; color: #1d6f62;
+  border: 2.5px solid #1d6f62; border-radius: 6px; padding: 2px 10px; transform: rotate(-6deg); max-width: 68%; text-align: center; overflow-wrap: anywhere; }
+.need-name input { border-color: var(--red) !important; box-shadow: 0 0 0 4px rgba(210,69,47,.25) !important; animation: shake .35s; }
+@keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+.free.noname .act { color: var(--ticket-muted); }
+.taken .who::before { content: "จองแล้วโดย"; font-size: 12px; color: var(--ticket-muted); }
+
+/* Cast list */
+h2 { font-family: var(--display); font-weight: 400; color: var(--gold); font-size: 24px; margin: 0; }
+.people { background: var(--night-2); border: 1px solid rgba(241,236,226,.10); border-radius: 14px; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid rgba(241,236,226,.08); vertical-align: top; }
+th { font-family: var(--label); font-weight: 600; color: var(--text-muted); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+td:first-child { font-family: var(--label); font-weight: 700; color: var(--gold-soft); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.n { font-variant-numeric: tabular-nums; text-align: right; width: 64px; }
+.empty { padding: 18px; color: var(--text-muted); font-size: 14px; }
+footer { color: var(--text-muted); font-size: 13px; text-align: center; }
+
+#toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 32px);
+  background: var(--gold); color: var(--ticket-ink); font-family: var(--label); font-weight: 600; padding: 11px 18px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.5); z-index: 5; }
+.name-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.name-grid label { display: grid; gap: 6px; }
+.name-grid input { width: 100%; font: inherit; font-family: var(--label); font-size: 18px; font-weight: 600; padding: 11px 14px; border-radius: 10px;
+  border: 1.5px solid rgba(241,236,226,.18); background: #0a1617; color: var(--text); min-width: 0; }
+.name-grid input::placeholder { color: #5f7470; font-weight: 500; }
+.name-grid input:focus-visible { outline: none; border-color: var(--gold); box-shadow: 0 0 0 4px rgba(242,182,50,.2); }
+@media (max-width: 480px) { .name-grid { grid-template-columns: 1fr; } }
+
+.rules-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(4,10,10,.78); backdrop-filter: blur(4px);
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.rules { width: min(520px, 100%); max-height: 100%; overflow-y: auto; background: var(--ticket); color: var(--ticket-ink); border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.6); animation: pop .28s ease-out; }
+@keyframes pop { from { transform: translateY(12px) scale(.97); opacity: 0; } }
+.rules-head { background: var(--gold); padding: 18px 22px 14px; border-bottom: 2px dashed rgba(42,33,24,.35); }
+.rules-head .eyebrow { color: var(--ticket-ink); letter-spacing: .2em; }
+.rules h2 { color: var(--ticket-ink); font-size: 26px; margin-top: 2px; }
+.rules ol { margin: 0; padding: 18px 22px 4px 46px; display: grid; gap: 10px; font-size: 15px; }
+.rules li::marker { font-family: var(--display); color: var(--red); }
+.rules li b { font-family: var(--label); }
+.rules .foot { padding: 14px 22px 20px; display: grid; gap: 10px; }
+.rules .foot small { color: var(--ticket-muted); font-size: 13px; }
+.rules button { font: inherit; font-family: var(--label); font-weight: 700; font-size: 17px; padding: 13px 18px; border: 0; border-radius: 12px;
+  background: var(--ticket-ink); color: var(--gold-soft); cursor: pointer; }
+.rules button:hover { background: #3d3024; }
+.rules button:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
+.rules-link { justify-self: start; font: inherit; font-family: var(--label); font-size: 13px; color: var(--gold-soft); background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }
+@media (max-width: 420px) { .grid { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .bulbs i { animation: none; } .role, .frames span { transition: none; } .role:hover:not(:disabled) { transform: none; } .rules { animation: none; } .need-name input { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="marquee">
+    <div class="bulbs" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <span class="eyebrow">Now casting · ทีมงานหนังสั้น</span>
+    <h1>แบ่งหน้าที่ทีมหนัง</h1>
+    <p class="sub">พิมพ์ชื่อตัวเอง แล้วกดตั๋วหน้าที่ที่อยากทำ ตั๋วหนึ่งใบมีเจ้าของได้คนเดียว แต่หนึ่งคนถือได้หลายใบ อยากเปลี่ยนก็กดตั๋วของตัวเองเพื่อคืน แล้วเลือกใบใหม่</p>
+    <span class="date">นำเสนอในชั้นเรียน 16–20 พ.ย.</span>
+  </header>
+
+  <div class="clock" id="clock" hidden><span class="lbl" id="clock-lbl"></span><span class="time" id="clock-time"></span></div>
+
+  <div class="strip" aria-label="ความคืบหน้า">
+    <div class="frames" id="frames"></div>
+    <div class="strip-label" id="strip-label"></div>
+  </div>
+
+  <section class="slip">
+    <div class="name-grid">
+      <label for="first"><span>ชื่อจริง</span><input id="first" type="text" maxlength="40" autocomplete="given-name" placeholder="เช่น สมชาย"></label>
+      <label for="last"><span>นามสกุล</span><input id="last" type="text" maxlength="40" autocomplete="family-name" placeholder="เช่น ใจดี"></label>
+    </div>
+    <div class="mine" id="mine">พิมพ์ชื่อและนามสกุลก่อน แล้วค่อยกดเลือกตั๋วด้านล่าง</div>
+    <button type="button" class="rules-link" id="show-rules">อ่านกติกาอีกครั้ง</button>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <div class="status" id="status">กำลังโหลดว่าใครจองอะไรไว้แล้ว…</div>
+
+  <section aria-label="หน้าที่ทั้งหมด"><div class="grid" id="grid"></div></section>
+
+  <section style="display:grid; gap:12px">
+    <h2>รายชื่อทีมงาน</h2>
+    <div class="people" id="people"><div class="empty">ยังไม่มีใครจองหน้าที่</div></div>
+  </section>
+
+  <footer>ทีม 8 คน · 14 หน้าที่ · หน้านี้อัปเดตเองทุก 4 วินาที</footer>
+</div>
+<div id="toast" hidden></div>
+<div class="rules-backdrop" id="rules" role="dialog" aria-modal="true" aria-labelledby="rules-title">
+  <div class="rules">
+    <div class="rules-head">
+      <span class="eyebrow">อ่านก่อนจอง</span>
+      <h2 id="rules-title">กติกาการเลือกหน้าที่</h2>
+    </div>
+    <ol>
+      <li><b>พิมพ์ชื่อจริงและนามสกุล</b>ให้ครบก่อน แล้วค่อยกดเลือกตั๋ว</li>
+      <li><b>หนึ่งหน้าที่มีได้แค่ 1 คน</b> ใครกดก่อนได้ก่อน ตั๋วที่มีตราประทับชื่อแล้ว เลือกซ้ำไม่ได้</li>
+      <li><b>หนึ่งคนเลือกได้หลายหน้าที่</b> ทีมมี 8 คนแต่มี 14 หน้าที่ บางคนต้องรับมากกว่าหนึ่งอย่าง และทุกคนควรมีอย่างน้อย 1 หน้าที่</li>
+      <li><b>อยากเปลี่ยน</b> ให้กดตั๋วของตัวเองเพื่อคืน แล้วกดเลือกใบใหม่</li>
+      <li><b>พิมพ์ชื่อให้เหมือนเดิมทุกครั้ง</b> ถ้าพิมพ์ต่างไป ระบบจะคิดว่าเป็นอีกคน และคืนหน้าที่เดิมไม่ได้</li>
+      <li><b>ห้ามใช้ชื่อเพื่อน</b>ไปจองหรือคืนหน้าที่แทน ถ้ามีปัญหาให้ถามคนที่ส่งลิงก์เว็บนี้ให้ หรือทักส่วนตัวได้เลย</li>
+      <li><b>ปิดรับเที่ยงคืน</b> (00:00 น. คืนวันที่ 10 ต่อเช้าวันที่ 11 พ.ย.) หลังจากนั้นจะจองหรือคืนหน้าที่ไม่ได้ แต่ยังเปิดดูรายชื่อได้</li>
+      <li>นำเสนอในชั้นเรียน <b>16–20 พ.ย.</b></li>
+    </ol>
+    <div class="foot">
+      <button type="button" id="rules-ok">ตกลง ไปเลือกหน้าที่</button>
+      <small>เปิดอ่านกติกาอีกครั้งได้จากลิงก์ใต้ช่องชื่อ</small>
+    </div>
+  </div>
+</div>
+<script>
+const ROLES = [
+  { id: "theme", t: "ชื่อเรื่อง · แก่นเรื่อง", en: "Theme" },
+  { id: "premise", t: "Big Idea · สมมติฐาน", en: "Premise" },
+  { id: "logline", t: "ประโยคขาย", en: "Logline" },
+  { id: "intention", t: "ทำไมถึงอยากทำเรื่องนี้", en: "Project intention" },
+  { id: "target", t: "กลุ่มเป้าหมาย", en: "Target" },
+  { id: "budget", t: "งบประมาณ", en: "Budget" },
+  { id: "plot", t: "Plot · Mind map · Keyword", en: "โครงสร้าง 3 องก์" },
+  { id: "concept", t: "Concept board", en: "จากบทภาพยนตร์", ai: true },
+  { id: "mood", t: "Mood & tone board", en: "จากบทภาพยนตร์", ai: true, note: "อาจารย์บรรยายสัปดาห์หน้า" },
+  { id: "story", t: "Storyboard", en: "1 ฉากจากไคลแม็กซ์", ai: true, note: "อาจารย์บรรยายสัปดาห์หน้า" },
+  { id: "music", t: "ตัวอย่างเพลงประกอบ", en: "Soundtrack sample", ai: true },
+  { id: "trailer", t: "ตัวอย่างภาพยนตร์", en: "Trailer", ai: true },
+  { id: "timeline", t: "Timeline การผลิต", en: "Production timeline" },
+  { id: "crew", t: "Crew", en: "รายชื่อทีมงาน" },
+];
+
+const $ = (id) => document.getElementById(id);
+const els = { first: $("first"), last: $("last"), mine: $("mine"), stats: $("stats"), status: $("status"), grid: $("grid"), people: $("people"), toast: $("toast") };
+
+let claims = {};
+let deadline = 0, clockOffset = 0;
+const closed = () => deadline && Date.now() + clockOffset >= deadline;
+let loaded = false;
+const busy = new Set();
+
+// Data lives in a Google Apps Script web app (JSON API). text/plain avoids a CORS preflight.
+const API = "https://script.google.com/macros/s/AKfycbx8CAgOJDs0mM41PnC5b0bf6HjfcRkkcQlOSwzyi24w5V2kVq-FpDjaM0hYPuqrOWW2/exec";
+async function call(fn, ...args) {
+  const res = fn === "getState"
+    ? await fetch(API + "?api=state&t=" + Date.now(), { cache: "no-store" })
+    : await fetch(API, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action: fn, roleId: args[0], name: args[1] }) });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return res.json();
+}
+function store(get, val) {
+  try {
+    if (get) return JSON.parse(localStorage.getItem("team-roles:fullname") || "{}");
+    localStorage.setItem("team-roles:fullname", JSON.stringify(val));
+  } catch (e) { return {}; }
+}
+const norm = (s) => String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
+const clean = (s) => s.trim().replace(/\s+/g, " ");
+const hasFull = () => clean(els.first.value) && clean(els.last.value);
+const myName = () => (hasFull() ? clean(els.first.value) + " " + clean(els.last.value) : "");
+const isMine = (c) => c && myName() && norm(c.name) === norm(myName());
+
+let toastTimer;
+function toast(msg) {
+  els.toast.textContent = msg; els.toast.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { els.toast.hidden = true; }, 3200);
+}
+function showStatus(msg) { els.status.textContent = msg; els.status.hidden = !msg; }
+
+function setClaims(res) {
+  if (res && typeof res.deadline === "number") { deadline = res.deadline; if (typeof res.now === "number") clockOffset = res.now - Date.now(); }
+  const next = res && res.claims ? res.claims : {};
+  const clean = {};
+  Object.keys(next || {}).forEach((id) => {
+    const v = next[id];
+    if (v && typeof v.name === "string" && v.name.trim() && ROLES.some((r) => r.id === id)) clean[id] = { name: v.name.trim(), at: v.at };
+  });
+  claims = clean;
+}
+
+function render() {
+  els.grid.replaceChildren();
+  ROLES.forEach((r, i) => {
+    const c = claims[r.id];
+    const state = !c ? "free" : isMine(c) ? "yours" : "taken";
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "role " + state; b.dataset.id = r.id;
+    if (state === "taken" || busy.has(r.id) || !loaded || closed()) b.disabled = true;
+    const stub = document.createElement("span"); stub.className = "stub";
+    const no = document.createElement("span"); no.className = "no"; no.textContent = String(i + 1).padStart(2, "0"); stub.append(no);
+    const body = document.createElement("span"); body.className = "body";
+    const t = document.createElement("span"); t.className = "t"; t.textContent = r.t;
+    if (r.ai) { const a = document.createElement("span"); a.className = "ai"; a.textContent = "AI"; t.append(a); }
+    const en = document.createElement("span"); en.className = "en"; en.textContent = r.en;
+    const mid = document.createElement("span"); mid.className = "note"; mid.textContent = r.note || "";
+    const who = document.createElement("span"); who.className = "who";
+    const pill = document.createElement("span"); pill.className = "pill";
+    const act = document.createElement("span"); act.className = "act";
+    if (state === "free") { pill.textContent = "ว่าง"; act.textContent = closed() ? "ปิดรับแล้ว" : busy.has(r.id) ? "กำลังบันทึก…" : myName() ? "กดเพื่อจอง" : "พิมพ์ชื่อด้านบนก่อนจอง"; if (!myName() || closed()) b.classList.add("noname"); }
+    else if (state === "yours") {
+      pill.textContent = "ของฉัน"; act.textContent = closed() ? "" : busy.has(r.id) ? "กำลังบันทึก…" : "กดเพื่อคืนหน้าที่";
+      const stamp = document.createElement("span"); stamp.className = "stamp"; stamp.textContent = c.name; who.append(stamp);
+    }
+    else { pill.textContent = c.name; }
+    who.append(pill, act);
+    body.append(t, en, mid, who);
+    b.append(stub, body);
+    b.setAttribute("aria-label", r.t + " — " + (state === "free" ? "ว่าง" : state === "yours" ? "ของคุณ กดเพื่อคืน" : "เลือกแล้วโดย " + c.name));
+    els.grid.append(b);
+  });
+
+  const taken = ROLES.filter((r) => claims[r.id]).length;
+  const people = {};
+  ROLES.forEach((r) => { const c = claims[r.id]; if (c) { const k = norm(c.name); (people[k] = people[k] || { name: c.name, roles: [] }).roles.push(r); } });
+  const frames = document.getElementById("frames");
+  frames.replaceChildren(...ROLES.map((r) => { const s = document.createElement("span"); if (claims[r.id]) s.className = "on"; s.title = r.t; return s; }));
+  const sl = document.getElementById("strip-label"); sl.replaceChildren();
+  [["จองแล้ว", taken + " / " + ROLES.length], ["ยังว่าง", ROLES.length - taken], ["คนที่จองแล้ว", Object.keys(people).length + " / 8"]].forEach(([l, n]) => {
+    const s = document.createElement("span"); const bb = document.createElement("b"); bb.textContent = n; s.append(l + " ", bb); sl.append(s); });
+  els.stats.replaceChildren();
+  [[taken, "หน้าที่มีคนเลือกแล้ว"], [ROLES.length - taken, "ยังว่าง"], [Object.keys(people).length, "คนที่เลือกแล้ว (จาก 8)"]].forEach(([n, l]) => {
+    const s = document.createElement("span"); const st = document.createElement("strong"); st.textContent = n; s.append(st, l); els.stats.append(s);
+  });
+
+  if (!myName()) els.mine.textContent = "พิมพ์ชื่อและนามสกุลก่อน แล้วค่อยกดเลือกตั๋วด้านล่าง";
+  else {
+    const mineRoles = ROLES.filter((r) => isMine(claims[r.id])).map((r) => r.t);
+    els.mine.replaceChildren();
+    if (mineRoles.length) { const b = document.createElement("b"); b.textContent = mineRoles.join(", "); els.mine.append("หน้าที่ของคุณ: ", b); }
+    else els.mine.textContent = "คุณยังไม่ได้เลือกหน้าที่";
+  }
+
+  const list = Object.values(people).sort((a, b) => a.name.localeCompare(b.name, "th"));
+  if (!list.length) { const d = document.createElement("div"); d.className = "empty"; d.textContent = "ยังไม่มีใครจองหน้าที่"; els.people.replaceChildren(d); return; }
+  const table = document.createElement("table");
+  const head = document.createElement("tr");
+  ["ชื่อ", "หน้าที่", "จำนวน"].forEach((h, i) => { const th = document.createElement("th"); th.textContent = h; if (i === 2) th.style.textAlign = "right"; head.append(th); });
+  table.append(head);
+  list.forEach((p) => {
+    const tr = document.createElement("tr");
+    const a = document.createElement("td"); a.textContent = p.name;
+    const b = document.createElement("td"); b.textContent = p.roles.map((r) => r.t).join(", ");
+    const n = document.createElement("td"); n.className = "n"; n.textContent = p.roles.length;
+    tr.append(a, b, n); table.append(tr);
+  });
+  els.people.replaceChildren(table);
+}
+
+async function act(fn, id) {
+  const me = myName();
+  if (closed()) { toast("ปิดรับแล้ว ถ้าต้องการเปลี่ยน ให้ถามคนที่ส่งลิงก์เว็บนี้ให้"); return; }
+  if (!me) {
+    toast("พิมพ์ชื่อจริงและนามสกุลให้ครบก่อน แล้วค่อยกดจอง");
+    const slip = document.querySelector(".slip");
+    slip.classList.remove("need-name"); void slip.offsetWidth; slip.classList.add("need-name");
+    slip.scrollIntoView({ behavior: "smooth", block: "center" });
+    (clean(els.first.value) ? els.last : els.first).focus({ preventScroll: true });
+    return;
+  }
+  busy.add(id); render();
+  try {
+    const res = await call(fn, id, me);
+    setClaims(res);
+    const role = ROLES.find((r) => r.id === id).t;
+    toast(res.ok ? (fn === "claim" ? "จองแล้ว: " : "คืนหน้าที่แล้ว: ") + role : res.msg);
+  } catch (e) { toast("บันทึกไม่สำเร็จ ลองกดใหม่อีกครั้ง"); }
+  finally { busy.delete(id); render(); }
+}
+
+async function refresh() {
+  try {
+    setClaims(await call("getState"));
+    loaded = true; showStatus(""); tick();
+  } catch (e) {
+    if (!loaded) showStatus("ยังโหลดข้อมูลไม่ได้ ตรวจอินเทอร์เน็ตแล้วรีเฟรชหน้านี้");
+  }
+  if (!busy.size) render();
+}
+
+let wasClosed = false;
+function tick() {
+  const box = $("clock");
+  if (!deadline) { box.hidden = true; return; }
+  box.hidden = false;
+  const left = deadline - (Date.now() + clockOffset);
+  if (left <= 0) {
+    box.className = "clock closed"; $("clock-lbl").textContent = "ปิดรับแล้ว ดูรายชื่อได้อย่างเดียว ถ้าต้องการเปลี่ยน ให้ถามคนที่ส่งลิงก์เว็บนี้ให้"; $("clock-time").textContent = "";
+    if (!wasClosed) { wasClosed = true; render(); }
+    return;
+  }
+  const sec = Math.floor(left / 1000), h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), sc = sec % 60;
+  box.className = "clock" + (left < 3600000 ? " soon" : "");
+  $("clock-lbl").textContent = "ปิดรับตอนเที่ยงคืน เหลือเวลาอีก";
+  $("clock-time").textContent = (h ? h + " ชม. " : "") + String(m).padStart(2, "0") + " นาที " + String(sc).padStart(2, "0") + " วิ";
+}
+setInterval(tick, 1000);
+
+els.grid.addEventListener("click", (ev) => {
+  const b = ev.target.closest(".role"); if (!b || b.disabled) return;
+  const id = b.dataset.id;
+  if (isMine(claims[id])) act("release", id); else if (!claims[id]) act("claim", id);
+});
+let nameTimer;
+[els.first, els.last].forEach((el) => el.addEventListener("input", () => {
+  if (myName()) document.querySelector(".slip").classList.remove("need-name");
+  render(); clearTimeout(nameTimer);
+  nameTimer = setTimeout(() => store(false, { first: clean(els.first.value), last: clean(els.last.value) }), 400);
+}));
+const saved = store(true);
+els.first.value = saved.first || ""; els.last.value = saved.last || "";
+
+const rules = $("rules");
+function openRules() { rules.hidden = false; $("rules-ok").focus(); }
+function closeRules() { rules.hidden = true; (clean(els.first.value) ? (clean(els.last.value) ? els.first : els.last) : els.first).focus(); }
+$("rules-ok").addEventListener("click", closeRules);
+$("show-rules").addEventListener("click", openRules);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !rules.hidden) closeRules(); });
+openRules();
+render();
+refresh();
+setInterval(() => { if (!document.hidden) refresh(); }, 4000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+</script>
+</body>
+</html>
